@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './Sidebar.module.css'
 
+
 const navLinks = [
   { label: 'Dashboard',    href: '/dashboard' },
   { label: 'Voitures',     href: '/voitures' },
