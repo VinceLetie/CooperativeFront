@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import SearchClient from '@/app/components/SearchClient'
 import { Client } from '@/app/clients/page'
 
@@ -66,8 +65,6 @@ export default function ListeReservations({
   masquerColonneVoiture = false,
   onSupprimer,
 }: Props) {
-  const router = useRouter()
-
   // ── Filtres internes ──
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
@@ -88,6 +85,26 @@ export default function ListeReservations({
     if (filtreClient   && r.idcli   !== filtreClient.idcli) return false
     return true
   })
+
+  // ✅ FIX : Handler "Modifier" — met à jour l'URL avec ?edit=ID
+  //    puis scroll vers le haut pour que le formulaire soit visible.
+  //    On utilise window.history.pushState pour ne PAS provoquer un rechargement
+  //    complet de la page (ce qui viderait l'état React / les reservations en mémoire).
+  //    Le useEffect dans page.tsx détecte le changement de searchParams et
+  //    remplit le formulaire automatiquement.
+  function handleModifier(idreserv: string) {
+    // Mise à jour de l'URL sans rechargement
+    const url = new URL(window.location.href)
+    url.searchParams.set('edit', idreserv)
+    window.history.pushState({}, '', url.toString())
+
+    // Déclencher l'événement popstate pour que Next.js / useSearchParams
+    // détecte le changement (nécessaire avec window.history.pushState manuel)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+
+    // Scroll vers le formulaire en haut de page
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="lr-section">
@@ -212,9 +229,11 @@ export default function ListeReservations({
 
                     <td>
                       <div className="lr-actions">
+                        {/* ✅ FIX : on appelle handleModifier au lieu de router.push
+                            pour éviter le rechargement de page qui vidait l'état */}
                         <button
                           className="lr-btn lr-btn-secondaire"
-                          onClick={() => router.push(`/reservation?edit=${r.idreserv}`)}
+                          onClick={() => handleModifier(r.idreserv)}
                         >
                           Modifier
                         </button>

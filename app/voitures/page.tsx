@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './voitures.module.css'
 import FormVoiture from '../components/FormVoiture'
@@ -149,110 +149,110 @@ export default function PageVoitures() {
               const occupees = placesOccupees(reservations, v.idvoit)
               const ouverte  = voitureOuverte === v.idvoit
 
-              return (
-                <>
-                  {/* ── Ligne voiture ── */}
-                  <tr key={v.idvoit} className={ouverte ? styles.ligneActive : ''}>
-                    <td className={styles.cellId}>{v.idvoit}</td>
-                    <td className={styles.cellDesign}>{v.design}</td>
-                    <td>
-                      <span className={`${styles.badge} ${styles[`badge_${v.type}`]}`}>
-                        {labelType(v.type)}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span style={{ fontWeight: 600, color: dispo > 0 ? '#16a34a' : '#dc2626' }}>
-                        {dispo} / {v.nbrplace}
-                      </span>
-                    </td>
-                    <td className={styles.cellFrais}>{formatFrais(v.frais)}</td>
-                    <td>
-                      <div className={styles.actions}>
-                        <button
-                          className={`${styles.btnAction} ${styles.btnSecondaire} ${ouverte ? styles.btnActif : ''}`}
-                          onClick={() => togglePlaces(v.idvoit)}
-                        >
-                          {ouverte ? '▲ Places' : '▼ Places'}
-                        </button>
-                        <button
-                          className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                          onClick={() => ouvrirModif(v)}
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          className={`${styles.btnAction} ${styles.btnDanger}`}
-                          onClick={() => setIdASupprimer(v.idvoit)}
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+               return (
+                 <Fragment key={v.idvoit}>
+                   {/* ── Ligne voiture ── */}
+                   <tr key={v.idvoit} className={ouverte ? styles.ligneActive : ''}>
+                     <td className={styles.cellId}>{v.idvoit}</td>
+                     <td className={styles.cellDesign}>{v.design}</td>
+                     <td>
+                       <span className={`${styles.badge} ${styles[`badge_${v.type}`]}`}>
+                         {labelType(v.type)}
+                       </span>
+                     </td>
+                     <td style={{ textAlign: 'center' }}>
+                       <span style={{ fontWeight: 600, color: dispo > 0 ? '#16a34a' : '#dc2626' }}>
+                         {dispo} / {v.nbrplace}
+                       </span>
+                     </td>
+                     <td className={styles.cellFrais}>{formatFrais(v.frais)}</td>
+                     <td>
+                       <div className={styles.actions}>
+                         <button
+                           className={`${styles.btnAction} ${styles.btnSecondaire} ${ouverte ? styles.btnActif : ''}`}
+                           onClick={() => togglePlaces(v.idvoit)}
+                         >
+                           {ouverte ? '▲ Places' : '▼ Places'}
+                         </button>
+                         <button
+                           className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                           onClick={() => ouvrirModif(v)}
+                         >
+                           Modifier
+                         </button>
+                         <button
+                           className={`${styles.btnAction} ${styles.btnDanger}`}
+                           onClick={() => setIdASupprimer(v.idvoit)}
+                         >
+                           Supprimer
+                         </button>
+                       </div>
+                     </td>
+                   </tr>
 
-                  {/* ── Ligne places minimaliste ── */}
-                  {ouverte && (
-                    <tr key={`places-${v.idvoit}`} className={styles.ligneBloc}>
-                      <td colSpan={6}>
-                        <div className={styles.blocPlaces}>
-                          <div className={styles.blocPlacesHeader}>
-                            <span>Places — {v.design}</span>
-                            <button
-                              className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                              onClick={() => setVoitureOuverte(null)}
-                            >
-                              ✕ Fermer
-                            </button>
-                          </div>
+                   {/* ── Ligne places minimaliste ── */}
+                   {ouverte && (
+                     <tr key={`places-${v.idvoit}`} className={styles.ligneBloc}>
+                       <td colSpan={6}>
+                         <div className={styles.blocPlaces}>
+                           <div className={styles.blocPlacesHeader}>
+                             <span>Places — {v.design}</span>
+                             <button
+                               className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                               onClick={() => setVoitureOuverte(null)}
+                             >
+                               ✕ Fermer
+                             </button>
+                           </div>
 
-                          {/* Affichage minimaliste — différent de GrillePlaces */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '4px 0' }}>
-                            {Array.from({ length: v.nbrplace }, (_, i) => {
-                              const num   = i + 1
-                              const libre = !occupees.includes(num)
-                              return (
-                                <div
-                                  key={num}
-                                  style={{
-                                    width: 52,
-                                    height: 52,
-                                    borderRadius: 8,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    background: libre ? '#f0fdf4' : '#fee2e2',
-                                    color: libre ? '#15803d' : '#b91c1c',
-                                    border: `1.5px solid ${libre ? '#bbf7d0' : '#fecaca'}`,
-                                    userSelect: 'none',
-                                  }}
-                                >
-                                  <span style={{ fontSize: 10, fontWeight: 400, marginBottom: 2 }}>
-                                    {libre ? 'Libre' : 'Occupé'}
-                                  </span>
-                                  {num}
-                                </div>
-                              )
-                            })}
-                          </div>
+                           {/* Affichage minimaliste — différent de GrillePlaces */}
+                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '4px 0' }}>
+                             {Array.from({ length: v.nbrplace }, (_, i) => {
+                               const num   = i + 1
+                               const libre = !occupees.includes(num)
+                               return (
+                                 <div
+                                   key={num}
+                                   style={{
+                                     width: 52,
+                                     height: 52,
+                                     borderRadius: 8,
+                                     display: 'flex',
+                                     flexDirection: 'column',
+                                     alignItems: 'center',
+                                     justifyContent: 'center',
+                                     fontSize: 13,
+                                     fontWeight: 600,
+                                     background: libre ? '#f0fdf4' : '#fee2e2',
+                                     color: libre ? '#15803d' : '#b91c1c',
+                                     border: `1.5px solid ${libre ? '#bbf7d0' : '#fecaca'}`,
+                                     userSelect: 'none',
+                                   }}
+                                 >
+                                   <span style={{ fontSize: 10, fontWeight: 400, marginBottom: 2 }}>
+                                     {libre ? 'Libre' : 'Occupé'}
+                                   </span>
+                                   {num}
+                                 </div>
+                               )
+                             })}
+                           </div>
 
-                          {/* Bouton Détail */}
-                          <div style={{ marginTop: 16 }}>
-                            <button
-                              className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                              onClick={() => router.push(`/voitures/${v.idvoit}`)}
-                            >
-                              Voir les réservations de cette voiture →
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              )
+                           {/* Bouton Détail */}
+                           <div style={{ marginTop: 16 }}>
+                             <button
+                               className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                               onClick={() => router.push(`/voitures/${v.idvoit}`)}
+                             >
+                               Voir les réservations de cette voiture →
+                             </button>
+                           </div>
+                         </div>
+                       </td>
+                     </tr>
+                   )}
+                 </Fragment>
+               )
             })}
 
             {voitures.length === 0 && (

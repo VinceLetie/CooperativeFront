@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import styles from './reservation.module.css'
 
@@ -138,24 +138,57 @@ export default function PageReservation() {
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
 
+  // ---------------------------------------------------------------------------
+  // ✅ FIX : useEffect (au lieu de useMemo) pour charger la réservation en édition
+  //    - useMemo ne se ré-exécute pas de façon fiable après hydration côté client
+  //    - useEffect s'exécute bien APRÈS le montage du composant, quand
+  //      searchParams est disponible et que reservations/clients sont en mémoire
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (!editId) return
+
+    // Déjà en train d'éditer ce même id → ne rien faire
+    if (enEdition === editId) return
+
+    const r = reservations.find(x => x.idreserv === editId)
+    if (!r) return
+
+    const client  = clients.find(c => c.idcli === r.idcli) ?? null
+    const voiture = VOITURES_INIT.find(v => v.idvoit === r.idvoit) ?? null
+
+    setEnEdition(editId)
+    setForm({
+      datevoyage:    r.datevoyage,
+      heure:         r.heure,
+      client,
+      typeVoiture:   voiture?.type ?? '',
+      voiture,
+      place:         r.place,
+      payment:       r.payment,
+      montantAvance: r.montantAvance,
+    })
+
+    // ✅ Scroll automatique vers le haut pour que le formulaire soit visible
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+  }, [searchParams, reservations, clients]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Voitures disponibles selon date + type + fenêtre J-2/J+2
   const voituresDispo = useMemo<Voiture[]>(() => {
     if (!form.datevoyage || !form.typeVoiture) return []
 
     const duBonType = VOITURES_INIT.filter(v => v.type === form.typeVoiture)
 
-    // Chercher si une voiture est déjà reservée à cette date exacte (même datevoyage)
     const voitureDejaReserveeDate = reservations.find(
       r => r.datevoyage === form.datevoyage && r.idreserv !== enEdition
     )
 
     if (voitureDejaReserveeDate) {
-      // On force cette voiture si elle est du bon type
       const forcee = duBonType.find(v => v.idvoit === voitureDejaReserveeDate.idvoit)
       return forcee ? [forcee] : []
     }
 
-    // Sinon, exclure les voitures bloquées par la fenêtre J-2/J+2
     return duBonType.filter(v => !voitureBloquee(v.idvoit, form.datevoyage, reservations, enEdition ?? undefined))
   }, [form.datevoyage, form.typeVoiture, reservations, enEdition])
 
@@ -168,29 +201,6 @@ export default function PageReservation() {
   // Frais affiché
   const frais = form.voiture?.frais ?? 0
   const reste = frais - form.montantAvance
-
-  // ---------------------------------------------------------------------------
-  // CHARGER EN ÉDITION (via ?edit=R001)
-  // ---------------------------------------------------------------------------
-  useMemo(() => {
-    const editId = searchParams.get('edit')
-    if (!editId || enEdition === editId) return
-    const r = reservations.find(x => x.idreserv === editId)
-    if (!r) return
-    const client  = clients.find(c => c.idcli === r.idcli) ?? null
-    const voiture = VOITURES_INIT.find(v => v.idvoit === r.idvoit) ?? null
-    setEnEdition(editId)
-    setForm({
-      datevoyage:    r.datevoyage,
-      heure:         r.heure,
-      client,
-      typeVoiture:   voiture?.type ?? '',
-      voiture,
-      place:         r.place,
-      payment:       r.payment,
-      montantAvance: r.montantAvance,
-    })
-  }, [searchParams]) // eslint-disable-line
 
   // ---------------------------------------------------------------------------
   // HANDLERS FORMULAIRE
@@ -271,6 +281,8 @@ export default function PageReservation() {
     setForm(FORM_VIDE)
     setEnEdition(null)
     setErreur('')
+    // Nettoyer le paramètre ?edit= de l'URL
+    window.history.replaceState({}, '', '/reservation')
   }
 
   function handleAnnulerEdition() {
@@ -340,7 +352,7 @@ export default function PageReservation() {
         {/* ── FORMULAIRE ── */}
         <div className={styles.formulaire}>
           <div className={styles.formulaireTitre}>
-            {enEdition ? `Modifier — ${enEdition}` : 'Nouvelle réservation'}
+            {enEdition ? `✏️ Modifier — ${enEdition}` : 'Nouvelle réservation'}
           </div>
 
           {/* ── 1. DATE ── */}
@@ -350,7 +362,9 @@ export default function PageReservation() {
               type="date"
               className={styles.input}
               value={form.datevoyage}
-              min={new Date().toISOString().split('T')[0]}
+              // ✅ FIX : en mode édition, on retire le min pour permettre
+              //    les dates passées (la réservation existante peut être ancienne)
+              min={enEdition ? undefined : new Date().toISOString().split('T')[0]}
               onChange={e => {
                 setForm(f => ({ ...f, datevoyage: e.target.value, voiture: null, place: null }))
                 setErreur('')
@@ -541,8 +555,6 @@ export default function PageReservation() {
         </div>
 
       </div>
-
-      
 
       {/* ══════════════════════════════════════════════════════════════════════
           LISTE RÉSERVATIONS
