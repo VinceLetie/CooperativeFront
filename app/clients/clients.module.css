@@ -1,0 +1,393 @@
+/* =========================================================
+   PAGE — clients.module.css
+   ========================================================= */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 48px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.titre {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.sousTitre {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Barre outils (recherche + filtres + select voiture) ── */
+.barreOutils {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* Recherche */
+.rechercheWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 340px;
+}
+
+.rechercheIcone {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.inputRecherche {
+  width: 100%;
+  padding: 9px 34px 9px 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.inputRecherche:focus {
+  border-color: #475569;
+  box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.08);
+}
+
+.inputRecherche::placeholder {
+  color: #94a3b8;
+}
+
+.btnEffacer {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btnEffacer:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+/* Filtres paiement */
+.filtresPaiement {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btnFiltre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btnFiltre:hover {
+  background: #f1f5f9;
+}
+
+.btnFiltreActif {
+  background: #475569;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.btnFiltreActif:hover {
+  background: #334155;
+}
+
+.badgeComptage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+.btnFiltreActif .badgeComptage {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Select voiture rapide */
+.selectVoiture {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #475569;
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+}
+
+.selectVoiture:focus {
+  border-color: #475569;
+}
+
+/* Info résultats */
+.rechercheInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 16px 0;
+  flex-wrap: wrap;
+}
+
+.rechercheInfoSurligne {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.btnReinitFiltres {
+  margin-left: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  transition: background 0.15s;
+}
+
+.btnReinitFiltres:hover {
+  background: #f1f5f9;
+}
+
+/* ── Tableau ── */
+.tableauWrapper {
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 32px;
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tableau th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tableau td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tableau tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Surbrillance recherche */
+.surligne {
+  background: #fef9c3;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+  color: #713f12;
+}
+
+.cellId {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cellNom {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cellTel {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.vide {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 40px 16px !important;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Boutons ── */
+.btnPrincipal {
+  background: #475569;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnPrincipal:hover {
+  background: #334155;
+}
+
+.btnAction {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnSecondaire {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btnSecondaire:hover {
+  background: #f1f5f9;
+}
+
+.btnDanger {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+}
+
+.btnDanger:hover {
+  background: #dc2626;
+}
+
+/* ── Overlay / Popup ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 28px;
+  width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.popupTitre {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btnClose:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.actionsPopup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+

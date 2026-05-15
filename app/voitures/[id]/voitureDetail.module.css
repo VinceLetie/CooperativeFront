@@ -1,0 +1,312 @@
+/* =========================================================
+   voitureDetail.module.css
+   ========================================================= */
+
+/* ── Page ── */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 48px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  margin-bottom: 24px;
+}
+
+.btnRetour {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px 0;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.btnRetour:hover {
+  color: #0f172a;
+}
+
+/* ── Fiche voiture ── */
+.ficheVoiture {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+
+.ficheGauche {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ficheId {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ficheDesign {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ficheDroite {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+
+.ficheStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ficheStatLabel {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.ficheStatVal {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ── Badges type ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge_simple {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badge_premium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge_vip {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ── Stats bar (filtres paiement) ── */
+.statsBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.statCard:hover {
+  background: #f8fafc;
+}
+
+.statCardActif {
+  background: #f8fafc;
+  border-color: #475569;
+}
+
+.statNum {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ── Section header ── */
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sectionTitre {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionCount {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.filtreActif {
+  font-size: 13px;
+  font-weight: 400;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnClearFiltre {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+
+.btnClearFiltre:hover {
+  color: #475569;
+}
+
+/* ── Erreur ── */
+.erreur {
+  font-size: 14px;
+  color: #dc2626;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ── Overlay / Popup ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 28px;
+  width: 440px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.popupTitre {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.popupTexte {
+  font-size: 14px;
+  color: #475569;
+  margin: 0 0 8px 0;
+}
+
+.popupAvertissement {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0 0 24px 0;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btnClose:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+/* ── Boutons ── */
+.btnAction {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnSecondaire {
+  background: #fff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btnSecondaire:hover {
+  background: #f1f5f9;
+}
+
+.btnDanger {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+}
+
+.btnDanger:hover {
+  background: #dc2626;
+}
+
+.actionsPopup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}

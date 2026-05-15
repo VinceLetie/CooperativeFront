@@ -1,0 +1,297 @@
+/* =========================================================
+   voitures.module.css
+   ========================================================= */
+
+/* ── Page ── */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 48px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.titre {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.sousTitre {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Tableau ── */
+.tableauWrapper {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tableau th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tableau td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tableau tbody tr:hover {
+  background: #f8fafc;
+}
+
+.ligneActive {
+  background: #f8fafc !important;
+}
+
+.ligneBloc td {
+  padding: 0 !important;
+  background: #f8fafc;
+}
+
+.cellId {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cellDesign {
+  font-weight: 500;
+}
+
+.cellFrais {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ── Badges type ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.badge_simple {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badge_premium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge_vip {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ── Actions ligne ── */
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Boutons ── */
+.btnAction {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnAction:hover {
+  background: #f1f5f9;
+}
+
+.btnPrincipal {
+  background: #475569;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnPrincipal:hover {
+  background: #334155;
+}
+
+.btnSecondaire {
+  background: #fff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btnSecondaire:hover {
+  background: #f1f5f9;
+}
+
+.btnDanger {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+}
+
+.btnDanger:hover {
+  background: #dc2626;
+}
+
+.btnActif {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+/* ── Bloc places ── */
+.blocPlaces {
+  padding: 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.blocPlacesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ── Vide ── */
+.vide {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 40px 16px !important;
+}
+
+/* ── Overlay / Popup ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 28px;
+  width: 440px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.popupTitre {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btnClose:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+/* ── Formulaire ── */
+.champ {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: #475569;
+}
+
+.actionsPopup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}

@@ -1,0 +1,417 @@
+/* =========================================================
+   reservation.module.css
+   ========================================================= */
+
+/* ── Page ── */
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 48px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.titre {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.sousTitre {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BLOC PRINCIPAL : formulaire + grille côte à côte
+══════════════════════════════════════════════════════════ */
+.blocs {
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 28px;
+  align-items: start;
+  margin-bottom: 40px;
+}
+
+/* ── Formulaire ── */
+.formulaire {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 28px;
+}
+
+.formulaireTitre {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* ── Champs ── */
+.champ {
+  margin-bottom: 18px;
+}
+
+.champInline {
+  flex: 1;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 7px;
+}
+
+.labelHint {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.labelFrais {
+  font-weight: 400;
+  color: #16a34a;
+  font-size: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: #475569;
+}
+
+.inputDisabled {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* ── Heure ── */
+.heureButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.heureBtn {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.heureBtn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.heureBtnActif {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+/* ── Client ── */
+.clientRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.clientSearch {
+  flex: 1;
+}
+
+.btnAjoutRapide {
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btnAjoutRapide:hover {
+  background: #f1f5f9;
+}
+
+/* ── Type voiture ── */
+.typeButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.typeBtn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.typeBtn_simple  { }
+.typeBtn_premium { }
+.typeBtn_vip     { }
+
+.typeBtn:hover    { background: #f1f5f9; }
+.typeBtnActif     { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+/* ── Voitures dispo ── */
+.voituresList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voitureBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.voitureBtn:hover       { background: #f8fafc; border-color: #cbd5e1; }
+.voitureBtnActif        { background: #f0fdf4; border-color: #16a34a; }
+
+.voitureBtnId   { font-weight: 700; color: #475569; min-width: 36px; }
+.voitureBtnNom  { flex: 1; font-weight: 500; }
+.voitureBtnFrais{ font-weight: 600; color: #16a34a; }
+
+.alerteBloc {
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+/* ── Paiement ── */
+.paiementButtons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.paiementBtn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #fff;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.paiementBtn:hover   { background: #f1f5f9; }
+.paiementBtnActif    { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+.avanceRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.resteInfo {
+  font-size: 13px;
+  color: #475569;
+  padding-bottom: 9px;
+  white-space: nowrap;
+}
+
+.toutPayeInfo {
+  font-size: 13px;
+  color: #16a34a;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+/* ── Erreur ── */
+.erreur {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+  margin-bottom: 14px;
+}
+
+/* ── Actions formulaire ── */
+.actionsForm {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
+.btnPrincipal {
+  background: #475569;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnPrincipal:hover { background: #334155; }
+
+.btnAction {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  transition: background 0.15s;
+}
+
+.btnAction:hover   { background: #f1f5f9; }
+.btnSecondaire     { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
+.btnSecondaire:hover { background: #f1f5f9; }
+
+/* ══════════════════════════════════════════════════════════
+   GRILLE PLACES
+══════════════════════════════════════════════════════════ */
+.grilleWrapper {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 24px;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grillePlaceholder {
+  text-align: center;
+  color: #94a3b8;
+}
+
+.grillePlaceholderIcone {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.grillePlaceholder p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   FILTRES + LISTE
+══════════════════════════════════════════════════════════ */
+.filtresSection {
+  margin-bottom: 16px;
+}
+
+.filtresTitre {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.filtresRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filtreClient {
+  width: 300px;
+}
+
+.filtrePaiementBtns {
+  display: flex;
+  gap: 6px;
+}
+
+.filtreBtn {
+  padding: 7px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filtreBtn:hover   { background: #f1f5f9; }
+.filtreBtnActif    { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .blocs {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 24px 16px;
+  }
+}
