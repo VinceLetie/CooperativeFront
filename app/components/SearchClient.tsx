@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Client } from '@/app/clients/page'
+import { apiClients } from '@/app/services/api'
 
 // ---------------------------------------------------------------------------
 // PROPS
@@ -10,7 +11,6 @@ interface Props {
   clients: Client[]
   onSelectionner: (client: Client) => void
   placeholder?: string
-  // Mode réservation : affiche client sélectionné + bouton changer
   avecSelection?: boolean
   clientSelectionne?: Client | null
   onChanger?: () => void
@@ -27,9 +27,12 @@ export default function SearchClient({
   clientSelectionne = null,
   onChanger,
 }: Props) {
-  const [recherche, setRecherche]     = useState('')
+  const [recherche, setRecherche]       = useState('')
   const [listeOuverte, setListeOuverte] = useState(false)
-  const refContainer                   = useRef<HTMLDivElement>(null)
+  const [resultats, setResultats]       = useState<Client[]>(clients)
+  const [loading, setLoading]           = useState(false)
+  const refContainer                    = useRef<HTMLDivElement>(null)
+  const debounceRef                     = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Fermer si clic en dehors
   useEffect(() => {
@@ -42,11 +45,40 @@ export default function SearchClient({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const clientsFiltres = clients.filter(c => {
-    if (!recherche) return true
-    const q = recherche.toLowerCase()
-    return c.nom.toLowerCase().includes(q) || c.numtel.includes(q)
-  })
+  // Sync résultats avec prop clients quand pas de recherche
+  useEffect(() => {
+    if (!recherche.trim()) setResultats(clients)
+  }, [clients, recherche])
+
+  // Recherche backend avec debounce 300ms
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!recherche.trim()) {
+      setResultats(clients)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setLoading(true)
+        const data = await apiClients.search(recherche.trim())
+        setResultats(data)
+      } catch {
+        // fallback filtrage local en cas d'erreur
+        const q = recherche.toLowerCase()
+        setResultats(clients.filter(c =>
+          c.nom.toLowerCase().includes(q) || c.numtel.includes(q)
+        ))
+      } finally {
+        setLoading(false)
+      }
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [recherche, clients])
 
   function selectionner(client: Client) {
     onSelectionner(client)
@@ -54,7 +86,7 @@ export default function SearchClient({
     setListeOuverte(false)
   }
 
-  // ── Mode avec sélection (réservation) : affiche encadré si client choisi ──
+  // ── Mode avec sélection ───────────────────────────────────────────────────
   if (avecSelection && clientSelectionne) {
     return (
       <div className="search-client-selectionne">
@@ -81,10 +113,12 @@ export default function SearchClient({
 
       {listeOuverte && (
         <div className="search-client-liste">
-          {clientsFiltres.length === 0 ? (
+          {loading ? (
+            <div className="search-client-vide">Recherche...</div>
+          ) : resultats.length === 0 ? (
             <div className="search-client-vide">Aucun client trouvé</div>
           ) : (
-            clientsFiltres.map(c => (
+            resultats.map(c => (
               <div
                 key={c.idcli}
                 className="search-client-item"

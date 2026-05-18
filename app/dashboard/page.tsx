@@ -1,43 +1,15 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import styles from './dashboard.module.css'
-import { Reservation } from '@/app/components/ListeReservations'
 import StatsPaiement from '@/app/components/StatsPaiement'
-
-// ---------------------------------------------------------------------------
-// DONNÉES MOCKÉES (à remplacer par appels API)
-// ---------------------------------------------------------------------------
-const RESERVATIONS_MOCK: Reservation[] = [
-  {
-    idreserv: 'R001', idvoit: 'V01', idcli: 1, place: 2,
-    dateReserv: '2025-05-01 08:00:00', dateVoyage: '2025-05-20',
-    payment: 'avec avance', montantAvance: 20000,
-    nomClient: 'Rakoto Madison', numtel: '034 33 888 12',
-    fraisVoiture: 50000, designVoiture: 'Toyota Hiace', typeVoiture: 'simple',
-  },
-  {
-    idreserv: 'R002', idvoit: 'V01', idcli: 2, place: 4,
-    dateReserv: '2025-05-02 09:00:00', dateVoyage: '2025-05-20',
-    payment: 'tout payé', montantAvance: 50000,
-    nomClient: 'Rabe Sylvie', numtel: '033 12 456 78',
-    fraisVoiture: 50000, designVoiture: 'Toyota Hiace', typeVoiture: 'simple',
-  },
-  {
-    idreserv: 'R003', idvoit: 'V02', idcli: 3, place: 1,
-    dateReserv: '2025-05-03 10:00:00', dateVoyage: '2025-05-22',
-    payment: 'sans avance', montantAvance: 0,
-    nomClient: 'Randria Jean', numtel: '032 99 111 22',
-    fraisVoiture: 80000, designVoiture: 'Mercedes Vito', typeVoiture: 'premium',
-  },
-  {
-    idreserv: 'R004', idvoit: 'V03', idcli: 4, place: 2,
-    dateReserv: '2025-05-04 07:00:00', dateVoyage: '2025-05-23',
-    payment: 'tout payé', montantAvance: 120000,
-    nomClient: 'Rakotondrabe Luc', numtel: '034 55 777 33',
-    fraisVoiture: 120000, designVoiture: 'Toyota Land Cruiser', typeVoiture: 'vip',
-  },
-]
+import { Reservation } from '@/app/components/ListeReservations'
+import {
+  apiReservations,
+  apiClients,
+  apiVoitures,
+  Paiement,
+} from '@/app/services/api'
 
 // ---------------------------------------------------------------------------
 // HELPERS
@@ -46,26 +18,95 @@ function formatMontant(n: number) {
   return n.toLocaleString('fr-FR') + ' Ar'
 }
 
+function mapPaiementToLocal(p: Paiement): 'sans avance' | 'avec avance' | 'tout payé' {
+  switch (p) {
+    case 'SANS_AVANCE': return 'sans avance'
+    case 'AVEC_AVANCE': return 'avec avance'
+    case 'TOUT_PAYE':   return 'tout payé'
+  }
+}
+
 // ---------------------------------------------------------------------------
 // PAGE
 // ---------------------------------------------------------------------------
 export default function PageDashboard() {
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [recetteTotale, setRecetteTotale] = useState(0)
+  const [nbClients, setNbClients]         = useState(0)
+  const [nbVoitures, setNbVoitures]       = useState(0)
+  const [loading, setLoading]             = useState(true)
+  const [error, setError]                 = useState<string | null>(null)
 
-  const recette = useMemo(() => {
-    const toutPaye   = RESERVATIONS_MOCK.filter(r => r.payment === 'tout payé')
-    const avecAvance = RESERVATIONS_MOCK.filter(r => r.payment === 'avec avance')
-    const sansAvance = RESERVATIONS_MOCK.filter(r => r.payment === 'sans avance')
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [reservationsData, clientsData, voituresData, recette] = await Promise.all([
+          apiReservations.list(),
+          apiClients.list(),
+          apiVoitures.list(),
+          apiReservations.recette(),
+        ])
 
-    const recetteTotale =
-      toutPaye.reduce((acc, r)   => acc + (r.fraisVoiture ?? 0), 0) +
-      avecAvance.reduce((acc, r) => acc + r.montantAvance, 0)
+        const clientsMap  = new Map(clientsData.map(c => [c.idcli, c]))
+        const voituresMap = new Map(voituresData.map(v => [v.idvoit, v]))
 
-    const resteTotal =
-      avecAvance.reduce((acc, r) => acc + ((r.fraisVoiture ?? 0) - r.montantAvance), 0) +
-      sansAvance.reduce((acc, r) => acc + (r.fraisVoiture ?? 0), 0)
+        const enrichies: Reservation[] = reservationsData.map(r => {
+          const client  = clientsMap.get(r.idcli)
+          const voiture = voituresMap.get(r.idvoit)
+          return {
+            idreserv:      r.idreserv,
+            idvoit:        r.idvoit,
+            idcli:         r.idcli,
+            place:         r.place,
+            dateReserv:    r.dateReserv,
+            dateVoyage:    r.dateVoyage,
+            payment:       mapPaiementToLocal(r.payment),
+            montantAvance: r.montantAvance,
+            nomClient:     client?.nom    ?? '—',
+            numtel:        client?.numtel ?? '—',
+            fraisVoiture:  voiture?.frais,
+            designVoiture: voiture?.design,
+            typeVoiture:   voiture?.type.toLowerCase(),
+          }
+        })
 
-    return { recetteTotale, resteTotal }
+        setReservations(enrichies)
+        setRecetteTotale(recette)
+        setNbClients(clientsData.length)
+        setNbVoitures(voituresData.length)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
   }, [])
+
+  const resteTotal = reservations.reduce((acc, r) => {
+    if (r.payment === 'tout payé') return acc
+    return acc + ((r.fraisVoiture ?? 0) - r.montantAvance)
+  }, 0)
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ textAlign: 'center', padding: '40px' }}>Chargement...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '20px', borderRadius: '8px', margin: '20px' }}>
+          <strong>Erreur :</strong> {error}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.page}>
@@ -80,26 +121,36 @@ export default function PageDashboard() {
       <div className={styles.recetteCard}>
         <div className={styles.recetteGauche}>
           <span className={styles.recetteLabel}>Recette totale accumulée</span>
-          <span className={styles.recetteMontant}>{formatMontant(recette.recetteTotale)}</span>
+          <span className={styles.recetteMontant}>{formatMontant(recetteTotale)}</span>
           <span className={styles.recetteSous}>Montants effectivement encaissés</span>
         </div>
         <div className={styles.recetteDroite}>
           <div className={styles.recetteItem}>
             <span className={styles.recetteItemLabel}>Reste à encaisser</span>
             <span className={styles.recetteItemVal} style={{ color: '#dc2626' }}>
-              {formatMontant(recette.resteTotal)}
+              {formatMontant(resteTotal)}
             </span>
           </div>
           <div className={styles.recetteSep} />
           <div className={styles.recetteItem}>
             <span className={styles.recetteItemLabel}>Total réservations</span>
-            <span className={styles.recetteItemVal}>{RESERVATIONS_MOCK.length}</span>
+            <span className={styles.recetteItemVal}>{reservations.length}</span>
+          </div>
+          <div className={styles.recetteSep} />
+          <div className={styles.recetteItem}>
+            <span className={styles.recetteItemLabel}>Clients</span>
+            <span className={styles.recetteItemVal}>{nbClients}</span>
+          </div>
+          <div className={styles.recetteSep} />
+          <div className={styles.recetteItem}>
+            <span className={styles.recetteItemLabel}>Voitures</span>
+            <span className={styles.recetteItemVal}>{nbVoitures}</span>
           </div>
         </div>
       </div>
 
-      {/* ── STATS PAIEMENT (component) ── */}
-      <StatsPaiement reservations={RESERVATIONS_MOCK} />
+      {/* ── STATS PAIEMENT ── */}
+      <StatsPaiement reservations={reservations} />
 
     </div>
   )

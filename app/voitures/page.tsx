@@ -1,30 +1,19 @@
 'use client'
 
-import { useState, Fragment } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './voitures.module.css'
 import FormVoiture from '../components/FormVoiture'
-import GrillePlaces from '../components/GrillePlaces'
+import {
+  apiVoitures,
+  apiPlaces,
+  Voiture as ApiVoiture,
+  Place as ApiPlace,
+  TypeVoiture as ApiTypeVoiture,
+} from '@/app/services/api'
 
 // ---------------------------------------------------------------------------
-// DONNÉES MOCKÉES
-// ---------------------------------------------------------------------------
-const VOITURES_INIT: Voiture[] = [
-  { idvoit: 'V01', design: 'Toyota Hiace',       type: 'simple',  nbrplace: 15, frais: 50000  },
-  { idvoit: 'V02', design: 'Mercedes Vito',       type: 'premium', nbrplace: 12, frais: 80000  },
-  { idvoit: 'V03', design: 'Toyota Land Cruiser', type: 'vip',     nbrplace:  9, frais: 120000 },
-]
-
-const RESERVATIONS_INIT: ReservationMin[] = [
-  { idreserv: 'R001', idvoit: 'V01', place: 2 },
-  { idreserv: 'R002', idvoit: 'V01', place: 4 },
-  { idreserv: 'R003', idvoit: 'V02', place: 1 },
-  { idreserv: 'R004', idvoit: 'V02', place: 3 },
-  { idreserv: 'R005', idvoit: 'V03', place: 2 },
-]
-
-// ---------------------------------------------------------------------------
-// TYPES
+// TYPES LOCAUX
 // ---------------------------------------------------------------------------
 export type TypeVoiture = 'simple' | 'premium' | 'vip'
 
@@ -34,12 +23,6 @@ export interface Voiture {
   type: TypeVoiture
   nbrplace: number
   frais: number
-}
-
-interface ReservationMin {
-  idreserv: string
-  idvoit: string
-  place: number
 }
 
 // ---------------------------------------------------------------------------
@@ -55,12 +38,24 @@ function labelType(t: TypeVoiture): string {
   return 'VIP'
 }
 
-function placesOccupees(reservations: ReservationMin[], idvoit: string): number[] {
-  return reservations.filter(r => r.idvoit === idvoit).map(r => r.place)
+function mapTypeToLocal(t: ApiTypeVoiture): TypeVoiture {
+  switch (t) {
+    case 'SIMPLE':  return 'simple'
+    case 'PREMIUM': return 'premium'
+    case 'VIP':     return 'vip'
+  }
 }
 
-function placesDisponibles(v: Voiture, reservations: ReservationMin[]): number {
-  return v.nbrplace - placesOccupees(reservations, v.idvoit).length
+function mapTypeToApi(t: TypeVoiture): ApiTypeVoiture {
+  switch (t) {
+    case 'simple':  return 'SIMPLE'
+    case 'premium': return 'PREMIUM'
+    case 'vip':     return 'VIP'
+  }
+}
+
+function mapApiVoitureToLocal(v: ApiVoiture): Voiture {
+  return { ...v, type: mapTypeToLocal(v.type) }
 }
 
 // ---------------------------------------------------------------------------
@@ -69,51 +64,133 @@ function placesDisponibles(v: Voiture, reservations: ReservationMin[]): number {
 export default function PageVoitures() {
   const router = useRouter()
 
-  const [voitures, setVoitures]                     = useState<Voiture[]>(VOITURES_INIT)
-  const [reservations]                               = useState<ReservationMin[]>(RESERVATIONS_INIT)
-  const [voitureOuverte, setVoitureOuverte]         = useState<string | null>(null)
+  const [voitures, setVoitures]                 = useState<Voiture[]>([])
+  const [placesParVoiture, setPlacesParVoiture] = useState<Record<string, ApiPlace[]>>({})
+  const [loading, setLoading]                   = useState(true)
+  const [error, setError]                       = useState<string | null>(null)
 
-  // FormVoiture
-  const [popupOuvert, setPopupOuvert]               = useState(false)
-  const [voitureEnEdition, setVoitureEnEdition]     = useState<Voiture | null>(null)
+  const [voitureOuverte, setVoitureOuverte]     = useState<string | null>(null)
+  const [popupOuvert, setPopupOuvert]           = useState(false)
+  const [voitureEnEdition, setVoitureEnEdition] = useState<Voiture | null>(null)
+  const [idASupprimer, setIdASupprimer]         = useState<string | null>(null)
 
-  // Confirmation suppression
-  const [idASupprimer, setIdASupprimer]             = useState<string | null>(null)
+  // ── Chargement initial ────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [voituresData, placesData] = await Promise.all([
+          apiVoitures.list(),
+          apiPlaces.list(),
+        ])
+        setVoitures(voituresData.map(mapApiVoitureToLocal))
 
-  // ── FormVoiture ──────────────────────────────────────────────────────────
-  function ouvrirAjout() {
-    setVoitureEnEdition(null)
-    setPopupOuvert(true)
-  }
-
-  function ouvrirModif(v: Voiture) {
-    setVoitureEnEdition(v)
-    setPopupOuvert(true)
-  }
-
-  function handleEnregistrer(v: Voiture) {
-    if (voitureEnEdition) {
-      setVoitures(voitures.map(x => x.idvoit === v.idvoit ? v : x))
-    } else {
-      setVoitures([...voitures, v])
+        // Grouper les places par idvoit
+        const grouped: Record<string, ApiPlace[]> = {}
+        placesData.forEach(p => {
+          const id = p.id.idvoit
+          if (!grouped[id]) grouped[id] = []
+          grouped[id].push(p)
+        })
+        setPlacesParVoiture(grouped)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
     }
-    setPopupOuvert(false)
+    loadData()
+  }, [])
+
+  // ── Toggle places — recharge depuis l'API à chaque ouverture ────────────
+  async function togglePlaces(idvoit: string) {
+    if (voitureOuverte === idvoit) {
+      setVoitureOuverte(null)
+      return
+    }
+    try {
+      const places = await apiPlaces.listByVoiture(idvoit)
+      setPlacesParVoiture(prev => ({ ...prev, [idvoit]: places }))
+    } catch (err) {
+      console.error('Erreur chargement places:', err)
+    }
+    setVoitureOuverte(idvoit)
   }
 
-  // ── Suppression ──────────────────────────────────────────────────────────
+  // ── Recharger les places de la voiture ouverte ────────────────────────────
+  async function rechargerPlaces(idvoit: string) {
+    try {
+      const places = await apiPlaces.listByVoiture(idvoit)
+      setPlacesParVoiture(prev => ({ ...prev, [idvoit]: places }))
+    } catch (err) {
+      console.error('Erreur rechargement places:', err)
+    }
+  }
+
+  // ── FormVoiture ───────────────────────────────────────────────────────────
+  function ouvrirAjout() { setVoitureEnEdition(null); setPopupOuvert(true) }
+  function ouvrirModif(v: Voiture) { setVoitureEnEdition(v); setPopupOuvert(true) }
+
+  async function handleEnregistrer(v: Voiture) {
+    try {
+      const payload = {
+        design:   v.design,
+        type:     mapTypeToApi(v.type),
+        nbrplace: v.nbrplace,
+        frais:    v.frais,
+      }
+      if (voitureEnEdition) {
+        const updated = await apiVoitures.update(v.idvoit, payload)
+        setVoitures(prev => prev.map(x => x.idvoit === v.idvoit ? mapApiVoitureToLocal(updated) : x))
+        // Recharger les places car nbrplace a pu changer
+        await rechargerPlaces(v.idvoit)
+        // Si la grille était ouverte sur cette voiture, la rouvrir pour forcer le re-render
+        if (voitureOuverte === v.idvoit) {
+          setVoitureOuverte(null)
+          setTimeout(() => setVoitureOuverte(v.idvoit), 0)
+        }
+      } else {
+        const created = await apiVoitures.create(payload)
+        setVoitures(prev => [...prev, mapApiVoitureToLocal(created)])
+        // Les places sont créées automatiquement par le backend
+        const places = await apiPlaces.listByVoiture(created.idvoit)
+        setPlacesParVoiture(prev => ({ ...prev, [created.idvoit]: places }))
+      }
+      setPopupOuvert(false)
+    } catch (err) {
+      console.error('Erreur enregistrement voiture:', err)
+    }
+  }
+
+  // ── Suppression (locale — pas d'endpoint DELETE dans l'API) ──────────────
   function confirmerSuppression() {
     if (!idASupprimer) return
-    setVoitures(voitures.filter(v => v.idvoit !== idASupprimer))
+    setVoitures(prev => prev.filter(v => v.idvoit !== idASupprimer))
     if (voitureOuverte === idASupprimer) setVoitureOuverte(null)
     setIdASupprimer(null)
   }
 
-  // ── Toggle places ────────────────────────────────────────────────────────
-  function togglePlaces(idvoit: string) {
-    setVoitureOuverte(voitureOuverte === idvoit ? null : idvoit)
+  // ── États ─────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ textAlign: 'center', padding: '40px' }}>Chargement des voitures...</p>
+      </div>
+    )
   }
 
-  // ── Rendu ────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '20px', borderRadius: '8px', margin: '20px' }}>
+          <strong>Erreur :</strong> {error}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Rendu ─────────────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
 
@@ -145,114 +222,108 @@ export default function PageVoitures() {
           </thead>
           <tbody>
             {voitures.map(v => {
-              const dispo    = placesDisponibles(v, reservations)
-              const occupees = placesOccupees(reservations, v.idvoit)
-              const ouverte  = voitureOuverte === v.idvoit
+              const places  = placesParVoiture[v.idvoit] ?? []
+              const libres  = places.filter(p => !p.occupation).length
+              const ouverte = voitureOuverte === v.idvoit
 
-               return (
-                 <Fragment key={v.idvoit}>
-                   {/* ── Ligne voiture ── */}
-                   <tr key={v.idvoit} className={ouverte ? styles.ligneActive : ''}>
-                     <td className={styles.cellId}>{v.idvoit}</td>
-                     <td className={styles.cellDesign}>{v.design}</td>
-                     <td>
-                       <span className={`${styles.badge} ${styles[`badge_${v.type}`]}`}>
-                         {labelType(v.type)}
-                       </span>
-                     </td>
-                     <td style={{ textAlign: 'center' }}>
-                       <span style={{ fontWeight: 600, color: dispo > 0 ? '#16a34a' : '#dc2626' }}>
-                         {dispo} / {v.nbrplace}
-                       </span>
-                     </td>
-                     <td className={styles.cellFrais}>{formatFrais(v.frais)}</td>
-                     <td>
-                       <div className={styles.actions}>
-                         <button
-                           className={`${styles.btnAction} ${styles.btnSecondaire} ${ouverte ? styles.btnActif : ''}`}
-                           onClick={() => togglePlaces(v.idvoit)}
-                         >
-                           {ouverte ? '▲ Places' : '▼ Places'}
-                         </button>
-                         <button
-                           className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                           onClick={() => ouvrirModif(v)}
-                         >
-                           Modifier
-                         </button>
-                         <button
-                           className={`${styles.btnAction} ${styles.btnDanger}`}
-                           onClick={() => setIdASupprimer(v.idvoit)}
-                         >
-                           Supprimer
-                         </button>
-                       </div>
-                     </td>
-                   </tr>
+              return (
+                <Fragment key={v.idvoit}>
+                  {/* ── Ligne voiture ── */}
+                  <tr className={ouverte ? styles.ligneActive : ''}>
+                    <td className={styles.cellId}>{v.idvoit}</td>
+                    <td className={styles.cellDesign}>{v.design}</td>
+                    <td>
+                      <span className={`${styles.badge} ${styles[`badge_${v.type}`]}`}>
+                        {labelType(v.type)}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{ fontWeight: 600, color: libres > 0 ? '#16a34a' : '#dc2626' }}>
+                        {libres} / {v.nbrplace}
+                      </span>
+                    </td>
+                    <td className={styles.cellFrais}>{formatFrais(v.frais)}</td>
+                    <td>
+                      <div className={styles.actions}>
+                        <button
+                          className={`${styles.btnAction} ${styles.btnSecondaire} ${ouverte ? styles.btnActif : ''}`}
+                          onClick={() => togglePlaces(v.idvoit)}
+                        >
+                          {ouverte ? '▲ Places' : '▼ Places'}
+                        </button>
+                        <button
+                          className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                          onClick={() => ouvrirModif(v)}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          className={`${styles.btnAction} ${styles.btnDanger}`}
+                          onClick={() => setIdASupprimer(v.idvoit)}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
 
-                   {/* ── Ligne places minimaliste ── */}
-                   {ouverte && (
-                     <tr key={`places-${v.idvoit}`} className={styles.ligneBloc}>
-                       <td colSpan={6}>
-                         <div className={styles.blocPlaces}>
-                           <div className={styles.blocPlacesHeader}>
-                             <span>Places — {v.design}</span>
-                             <button
-                               className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                               onClick={() => setVoitureOuverte(null)}
-                             >
-                               ✕ Fermer
-                             </button>
-                           </div>
+                  {/* ── Ligne places ── */}
+                  {ouverte && (
+                    <tr className={styles.ligneBloc}>
+                      <td colSpan={6}>
+                        <div className={styles.blocPlaces}>
+                          <div className={styles.blocPlacesHeader}>
+                            <span>Places — {v.design}</span>
+                            <button
+                              className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                              onClick={() => setVoitureOuverte(null)}
+                            >
+                              ✕ Fermer
+                            </button>
+                          </div>
 
-                           {/* Affichage minimaliste — différent de GrillePlaces */}
-                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '4px 0' }}>
-                             {Array.from({ length: v.nbrplace }, (_, i) => {
-                               const num   = i + 1
-                               const libre = !occupees.includes(num)
-                               return (
-                                 <div
-                                   key={num}
-                                   style={{
-                                     width: 52,
-                                     height: 52,
-                                     borderRadius: 8,
-                                     display: 'flex',
-                                     flexDirection: 'column',
-                                     alignItems: 'center',
-                                     justifyContent: 'center',
-                                     fontSize: 13,
-                                     fontWeight: 600,
-                                     background: libre ? '#f0fdf4' : '#fee2e2',
-                                     color: libre ? '#15803d' : '#b91c1c',
-                                     border: `1.5px solid ${libre ? '#bbf7d0' : '#fecaca'}`,
-                                     userSelect: 'none',
-                                   }}
-                                 >
-                                   <span style={{ fontSize: 10, fontWeight: 400, marginBottom: 2 }}>
-                                     {libre ? 'Libre' : 'Occupé'}
-                                   </span>
-                                   {num}
-                                 </div>
-                               )
-                             })}
-                           </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '4px 0' }}>
+                            {places
+                              .sort((a, b) => a.id.place - b.id.place)
+                              .map(p => {
+                                const libre = !p.occupation
+                                return (
+                                  <div
+                                    key={p.id.place}
+                                    style={{
+                                      width: 52, height: 52, borderRadius: 8,
+                                      display: 'flex', flexDirection: 'column',
+                                      alignItems: 'center', justifyContent: 'center',
+                                      fontSize: 13, fontWeight: 600,
+                                      background: libre ? '#f0fdf4' : '#fee2e2',
+                                      color: libre ? '#15803d' : '#b91c1c',
+                                      border: `1.5px solid ${libre ? '#bbf7d0' : '#fecaca'}`,
+                                      userSelect: 'none',
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 10, fontWeight: 400, marginBottom: 2 }}>
+                                      {libre ? 'Libre' : 'Occupé'}
+                                    </span>
+                                    {p.id.place}
+                                  </div>
+                                )
+                              })}
+                          </div>
 
-                           {/* Bouton Détail */}
-                           <div style={{ marginTop: 16 }}>
-                             <button
-                               className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                               onClick={() => router.push(`/voitures/${v.idvoit}`)}
-                             >
-                               Voir les réservations de cette voiture →
-                             </button>
-                           </div>
-                         </div>
-                       </td>
-                     </tr>
-                   )}
-                 </Fragment>
-               )
+                          <div style={{ marginTop: 16 }}>
+                            <button
+                              className={`${styles.btnAction} ${styles.btnSecondaire}`}
+                              onClick={() => router.push(`/voitures/${v.idvoit}`)}
+                            >
+                              Voir les réservations de cette voiture →
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
             })}
 
             {voitures.length === 0 && (
@@ -264,7 +335,7 @@ export default function PageVoitures() {
         </table>
       </div>
 
-      {/* ── FORM VOITURE (component) ── */}
+      {/* ── FORM VOITURE ── */}
       {popupOuvert && (
         <FormVoiture
           voiture={voitureEnEdition}

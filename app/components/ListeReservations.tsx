@@ -10,7 +10,7 @@ import { Client } from '@/app/clients/page'
 export interface Reservation {
   idreserv: string
   idvoit: string
-  idcli: number
+  idcli: string        // string : "C001"
   place: number
   dateReserv: string   // AAAA-MM-JJ HH:MM:SS
   dateVoyage: string   // AAAA-MM-JJ
@@ -26,7 +26,6 @@ export interface Reservation {
 interface Props {
   reservations: Reservation[]
   clients?: Client[]
-  /** Masquer la colonne Voiture quand on est déjà sur une page voiture */
   masquerColonneVoiture?: boolean
   onSupprimer?: (idreserv: string) => void
 }
@@ -40,8 +39,11 @@ function formatDate(d: string): string {
 }
 
 function formatDatetime(dt: string): string {
+  if (!dt) return '—'
   const [date, time] = dt.split(' ')
+  if (!date) return '—'
   const [y, m, day] = date.split('-')
+  if (!time) return `${day}/${m}/${y}`
   const [hh, mm] = time.split(':')
   return `${day}/${m}/${y} ${hh}:${mm}`
 }
@@ -65,12 +67,9 @@ export default function ListeReservations({
   masquerColonneVoiture = false,
   onSupprimer,
 }: Props) {
-  // ── Filtres internes ──
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
 
-  // Si clients[] non fourni (ex: page voiture/id), on les reconstruit
-  // depuis les données enrichies des réservations elles-mêmes
   const clientsDisponibles: Client[] = clients ?? reservations
     .filter(r => r.nomClient)
     .reduce<Client[]>((acc, r) => {
@@ -86,23 +85,11 @@ export default function ListeReservations({
     return true
   })
 
-  // ✅ FIX : Handler "Modifier" — met à jour l'URL avec ?edit=ID
-  //    puis scroll vers le haut pour que le formulaire soit visible.
-  //    On utilise window.history.pushState pour ne PAS provoquer un rechargement
-  //    complet de la page (ce qui viderait l'état React / les reservations en mémoire).
-  //    Le useEffect dans page.tsx détecte le changement de searchParams et
-  //    remplit le formulaire automatiquement.
   function handleModifier(idreserv: string) {
-    // Mise à jour de l'URL sans rechargement
     const url = new URL(window.location.href)
     url.searchParams.set('edit', idreserv)
     window.history.pushState({}, '', url.toString())
-
-    // Déclencher l'événement popstate pour que Next.js / useSearchParams
-    // détecte le changement (nécessaire avec window.history.pushState manuel)
     window.dispatchEvent(new PopStateEvent('popstate'))
-
-    // Scroll vers le formulaire en haut de page
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -114,7 +101,6 @@ export default function ListeReservations({
         <div className="lr-filtres-titre">Liste des réservations</div>
         <div className="lr-filtres-row">
 
-          {/* Recherche client */}
           {clientsDisponibles.length > 0 && (
             <div className="lr-filtre-client">
               <SearchClient
@@ -128,7 +114,6 @@ export default function ListeReservations({
             </div>
           )}
 
-          {/* Filtre paiement */}
           <div className="lr-filtre-paiement-btns">
             {([
               { val: null,          label: 'Tous' },
@@ -193,7 +178,7 @@ export default function ListeReservations({
                     )}
 
                     <td>
-                      <div className="lr-client-nom">{r.nomClient ?? `Client #${r.idcli}`}</div>
+                      <div className="lr-client-nom">{r.nomClient ?? `Client ${r.idcli}`}</div>
                       {r.numtel && <div className="lr-client-tel">{r.numtel}</div>}
                     </td>
 
@@ -229,8 +214,6 @@ export default function ListeReservations({
 
                     <td>
                       <div className="lr-actions">
-                        {/* ✅ FIX : on appelle handleModifier au lieu de router.push
-                            pour éviter le rechargement de page qui vidait l'état */}
                         <button
                           className="lr-btn lr-btn-secondaire"
                           onClick={() => handleModifier(r.idreserv)}

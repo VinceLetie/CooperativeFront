@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Client } from '@/app/clients/page'
 import '../globals.css'
+
 // ---------------------------------------------------------------------------
 // PROPS
 // ---------------------------------------------------------------------------
@@ -45,7 +46,8 @@ export default function FormClient({ client, clientsExistants, onEnregistrer, on
     }
 
     const c: Client = {
-      idcli:  modeModif ? client!.idcli : clientsExistants.length + 1,
+      // En mode création, idcli est assigné par le backend — on passe une string vide
+      idcli:  modeModif ? client!.idcli : '',
       nom:    formNom.trim(),
       numtel: formNumtel.trim(),
     }

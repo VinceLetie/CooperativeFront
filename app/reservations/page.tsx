@@ -8,68 +8,88 @@ import SearchClient from '../components/SearchClient'
 import GrillePlaces from '../components/GrillePlaces'
 import ListeReservations from '../components/ListeReservations'
 import FormClient from '../components/FormClient'
-import { genererRecu } from '../components/ReservationRecu'
 
 import { Client } from '@/app/clients/page'
 import { Voiture, TypeVoiture } from '@/app/voitures/page'
 import '../globals.css'
 
-// ---------------------------------------------------------------------------
-// DONNÉES MOCKÉES
-// ---------------------------------------------------------------------------
-const CLIENTS_INIT: Client[] = [
-  { idcli: 1, nom: 'Rakoto Madison',     numtel: '034 33 888 12' },
-  { idcli: 2, nom: 'Rabe Sylvie',        numtel: '033 12 456 78' },
-  { idcli: 3, nom: 'Randria Jean',       numtel: '032 99 111 22' },
-  { idcli: 4, nom: 'Rakotondrabe Luc',   numtel: '034 55 777 33' },
-]
+import {
+  apiClients,
+  apiVoitures,
+  apiReservations,
+  apiPlaces,
+  Reservation as ApiReservation,
+  Paiement,
+  TypeVoiture as ApiTypeVoiture,
+  CreateReservationData,
+  UpdateReservationData,
+} from '@/app/services/api'
 
-const VOITURES_INIT: Voiture[] = [
-  { idvoit: 'V01', design: 'Toyota Hiace',        type: 'simple',  nbrplace: 15, frais: 50000  },
-  { idvoit: 'V02', design: 'Mercedes Vito',        type: 'premium', nbrplace: 12, frais: 80000  },
-  { idvoit: 'V03', design: 'Toyota Land Cruiser',  type: 'vip',     nbrplace:  9, frais: 120000 },
-  { idvoit: 'V04', design: 'Nissan Urvan',         type: 'simple',  nbrplace: 15, frais: 45000  },
-]
-
+// ---------------------------------------------------------------------------
+// TYPES LOCAUX
+// ---------------------------------------------------------------------------
 export interface Reservation {
   idreserv: string
   idvoit: string
-  idcli: number
+  idcli: string        // string (API retourne "C001")
   place: number
   dateReserv: string
-  datevoyage: string
-  heure: '7h Matin' | '7h Soir'
+  dateVoyage: string
   payment: 'sans avance' | 'avec avance' | 'tout payé'
   montantAvance: number
 }
 
-const RESERVATIONS_INIT: Reservation[] = [
-  {
-    idreserv: 'R001', idvoit: 'V01', idcli: 1, place: 2,
-    dateReserv: '2025-05-01 08:00:00', datevoyage: '2025-05-20',
-    heure: '7h Matin', payment: 'avec avance', montantAvance: 20000,
-  },
-  {
-    idreserv: 'R002', idvoit: 'V01', idcli: 2, place: 4,
-    dateReserv: '2025-05-02 09:00:00', datevoyage: '2025-05-20',
-    heure: '7h Soir', payment: 'tout payé', montantAvance: 50000,
-  },
-  {
-    idreserv: 'R003', idvoit: 'V02', idcli: 3, place: 1,
-    dateReserv: '2025-05-03 10:00:00', datevoyage: '2025-05-22',
-    heure: '7h Matin', payment: 'sans avance', montantAvance: 0,
-  },
-]
+// ---------------------------------------------------------------------------
+// CONVERSIONS
+// ---------------------------------------------------------------------------
+function mapPaiementToLocal(p: Paiement): 'sans avance' | 'avec avance' | 'tout payé' {
+  switch (p) {
+    case 'SANS_AVANCE': return 'sans avance'
+    case 'AVEC_AVANCE': return 'avec avance'
+    case 'TOUT_PAYE':   return 'tout payé'
+  }
+}
+
+function mapPaiementToApi(p: 'sans avance' | 'avec avance' | 'tout payé'): Paiement {
+  switch (p) {
+    case 'sans avance': return 'SANS_AVANCE'
+    case 'avec avance': return 'AVEC_AVANCE'
+    case 'tout payé':   return 'TOUT_PAYE'
+  }
+}
+
+function mapTypeToApi(t: TypeVoiture): ApiTypeVoiture {
+  switch (t) {
+    case 'simple':  return 'SIMPLE'
+    case 'premium': return 'PREMIUM'
+    case 'vip':     return 'VIP'
+  }
+}
+
+function mapTypeToLocal(t: ApiTypeVoiture): TypeVoiture {
+  switch (t) {
+    case 'SIMPLE':  return 'simple'
+    case 'PREMIUM': return 'premium'
+    case 'VIP':     return 'vip'
+  }
+}
+
+function mapApiReservation(r: ApiReservation): Reservation {
+  return {
+    idreserv:      r.idreserv,
+    idvoit:        r.idvoit,
+    idcli:         r.idcli,
+    place:         r.place,
+    dateReserv:    r.dateReserv,
+    dateVoyage:    r.dateVoyage,
+    payment:       mapPaiementToLocal(r.payment),
+    montantAvance: r.montantAvance,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
-function genId(reservations: Reservation[]): string {
-  const nums = reservations.map(r => parseInt(r.idreserv.replace('R', ''), 10))
-  const max  = nums.length ? Math.max(...nums) : 0
-  return `R${String(max + 1).padStart(3, '0')}`
-}
-
 function formatDateAffichage(dateStr: string): string {
   if (!dateStr) return ''
   const [y, m, d] = dateStr.split('-')
@@ -77,23 +97,14 @@ function formatDateAffichage(dateStr: string): string {
   return `${parseInt(d)} ${mois[parseInt(m) - 1]} ${y}`
 }
 
-/** Vérifie si une voiture est bloquée à une date donnée (fenêtre J-2 / J+2) */
-function voitureBloquee(idvoit: string, datevoyage: string, reservations: Reservation[], idreservExclu?: string): boolean {
-  if (!datevoyage) return false
-  const cible = new Date(datevoyage).getTime()
-  return reservations.some(r => {
-    if (r.idvoit !== idvoit) return false
-    if (idreservExclu && r.idreserv === idreservExclu) return false
-    const rv = new Date(r.datevoyage).getTime()
-    const diff = Math.abs(cible - rv) / (1000 * 60 * 60 * 24)
-    return diff <= 2
-  })
-}
-
-/** Places occupées pour une voiture à une date de voyage donnée */
-function placesOccupeesVoiture(idvoit: string, datevoyage: string, reservations: Reservation[], idreservExclu?: string): number[] {
+function placesOccupeesVoiture(
+  idvoit: string,
+  dateVoyage: string,
+  reservations: Reservation[],
+  idreservExclu?: string
+): number[] {
   return reservations
-    .filter(r => r.idvoit === idvoit && r.datevoyage === datevoyage && r.idreserv !== idreservExclu)
+    .filter(r => r.idvoit === idvoit && r.dateVoyage === dateVoyage && r.idreserv !== idreservExclu)
     .map(r => r.place)
 }
 
@@ -101,8 +112,7 @@ function placesOccupeesVoiture(idvoit: string, datevoyage: string, reservations:
 // ÉTAT FORMULAIRE
 // ---------------------------------------------------------------------------
 interface FormState {
-  datevoyage: string
-  heure: '7h Matin' | '7h Soir' | ''
+  dateVoyage: string
   client: Client | null
   typeVoiture: TypeVoiture | ''
   voiture: Voiture | null
@@ -112,7 +122,7 @@ interface FormState {
 }
 
 const FORM_VIDE: FormState = {
-  datevoyage: '', heure: '', client: null,
+  dateVoyage: '', client: null,
   typeVoiture: '', voiture: null, place: null,
   payment: '', montantAvance: 0,
 }
@@ -123,44 +133,72 @@ const FORM_VIDE: FormState = {
 export default function PageReservation() {
   const searchParams = useSearchParams()
 
-  const [clients,      setClients]      = useState<Client[]>(CLIENTS_INIT)
-  const [reservations, setReservations] = useState<Reservation[]>(RESERVATIONS_INIT)
+  const [clients,      setClients]      = useState<Client[]>([])
+  const [voitures,     setVoitures]     = useState<Voiture[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
 
-  // Formulaire
+  // Places occupées par voiture (depuis l'API /places)
+  const [placesOccupeesApi, setPlacesOccupeesApi] = useState<Record<string, number[]>>({})
+
   const [form,         setForm]         = useState<FormState>(FORM_VIDE)
   const [enEdition,    setEnEdition]    = useState<string | null>(null)
   const [erreur,       setErreur]       = useState<string>('')
+  const [saving,       setSaving]       = useState(false)
 
-  // Popup ajout client rapide
   const [popupClient,  setPopupClient]  = useState(false)
 
-  // Filtre liste
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
 
-  // ---------------------------------------------------------------------------
-  // ✅ FIX : useEffect (au lieu de useMemo) pour charger la réservation en édition
-  //    - useMemo ne se ré-exécute pas de façon fiable après hydration côté client
-  //    - useEffect s'exécute bien APRÈS le montage du composant, quand
-  //      searchParams est disponible et que reservations/clients sont en mémoire
-  // ---------------------------------------------------------------------------
+  // ── Chargement initial ────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [clientsData, voituresData, reservationsData] = await Promise.all([
+          apiClients.list(),
+          apiVoitures.list(),
+          apiReservations.list(),
+        ])
+        setClients(clientsData)
+        setVoitures(voituresData.map(v => ({ ...v, type: mapTypeToLocal(v.type) })))
+        setReservations(reservationsData.map(mapApiReservation))
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  // ── Chargement places occupées quand une voiture est sélectionnée ─────────
+  useEffect(() => {
+    if (!form.voiture) return
+    const idvoit = form.voiture.idvoit
+    apiPlaces.listByVoiture(idvoit).then(places => {
+      const occupees = places.filter(p => p.occupation).map(p => p.id.place)
+      setPlacesOccupeesApi(prev => ({ ...prev, [idvoit]: occupees }))
+    }).catch(console.error)
+  }, [form.voiture])
+
+  // ── Pré-remplissage en mode édition via ?edit= ────────────────────────────
   useEffect(() => {
     const editId = searchParams.get('edit')
-    if (!editId) return
-
-    // Déjà en train d'éditer ce même id → ne rien faire
-    if (enEdition === editId) return
+    if (!editId || enEdition === editId) return
 
     const r = reservations.find(x => x.idreserv === editId)
     if (!r) return
 
     const client  = clients.find(c => c.idcli === r.idcli) ?? null
-    const voiture = VOITURES_INIT.find(v => v.idvoit === r.idvoit) ?? null
+    const voiture = voitures.find(v => v.idvoit === r.idvoit) ?? null
 
     setEnEdition(editId)
     setForm({
-      datevoyage:    r.datevoyage,
-      heure:         r.heure,
+      dateVoyage:    r.dateVoyage,
       client,
       typeVoiture:   voiture?.type ?? '',
       voiture,
@@ -168,37 +206,23 @@ export default function PageReservation() {
       payment:       r.payment,
       montantAvance: r.montantAvance,
     })
-
-    // ✅ Scroll automatique vers le haut pour que le formulaire soit visible
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [searchParams, reservations, clients, voitures, enEdition])
 
-  }, [searchParams, reservations, clients]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Voitures disponibles selon date + type + fenêtre J-2/J+2
+  // ── Voitures disponibles selon type + date ────────────────────────────────
   const voituresDispo = useMemo<Voiture[]>(() => {
-    if (!form.datevoyage || !form.typeVoiture) return []
+    if (!form.dateVoyage || !form.typeVoiture) return []
+    return voitures.filter(v => v.type === form.typeVoiture)
+  }, [form.dateVoyage, form.typeVoiture, voitures])
 
-    const duBonType = VOITURES_INIT.filter(v => v.type === form.typeVoiture)
-
-    const voitureDejaReserveeDate = reservations.find(
-      r => r.datevoyage === form.datevoyage && r.idreserv !== enEdition
-    )
-
-    if (voitureDejaReserveeDate) {
-      const forcee = duBonType.find(v => v.idvoit === voitureDejaReserveeDate.idvoit)
-      return forcee ? [forcee] : []
-    }
-
-    return duBonType.filter(v => !voitureBloquee(v.idvoit, form.datevoyage, reservations, enEdition ?? undefined))
-  }, [form.datevoyage, form.typeVoiture, reservations, enEdition])
-
-  // Places occupées de la voiture choisie à cette date
+  // ── Places occupées pour la grille ───────────────────────────────────────
   const occupees = useMemo<number[]>(() => {
-    if (!form.voiture || !form.datevoyage) return []
-    return placesOccupeesVoiture(form.voiture.idvoit, form.datevoyage, reservations, enEdition ?? undefined)
-  }, [form.voiture, form.datevoyage, reservations, enEdition])
+    if (!form.voiture) return []
+    // Priorité : données fraîches de l'API places
+    return placesOccupeesApi[form.voiture.idvoit]
+      ?? placesOccupeesVoiture(form.voiture.idvoit, form.dateVoyage, reservations, enEdition ?? undefined)
+  }, [form.voiture, form.dateVoyage, reservations, enEdition, placesOccupeesApi])
 
-  // Frais affiché
   const frais = form.voiture?.frais ?? 0
   const reste = frais - form.montantAvance
 
@@ -227,62 +251,60 @@ export default function PageReservation() {
   }
 
   // ---------------------------------------------------------------------------
-  // ENREGISTRER
+  // ENREGISTRER → API
   // ---------------------------------------------------------------------------
-  function handleEnregistrer() {
-    if (!form.datevoyage)  return setErreur('Choisissez une date de voyage.')
-    if (!form.heure)       return setErreur('Choisissez une heure (7h Matin ou 7h Soir).')
+  async function handleEnregistrer() {
+    if (!form.dateVoyage)  return setErreur('Choisissez une date de voyage.')
     if (!form.client)      return setErreur('Sélectionnez un client.')
     if (!form.typeVoiture) return setErreur('Choisissez un type de voiture.')
     if (!form.voiture)     return setErreur('Choisissez une voiture.')
     if (!form.place)       return setErreur('Choisissez une place.')
     if (!form.payment)     return setErreur('Choisissez un mode de paiement.')
     if (form.payment === 'avec avance' && form.montantAvance <= 0)
-      return setErreur('Entrez le montant de l\'avance.')
+      return setErreur("Entrez le montant de l'avance.")
 
-    const now = new Date()
-    const dateReserv = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+    try {
+      setSaving(true)
 
-    const nouvelleReserv: Reservation = {
-      idreserv:      enEdition ?? genId(reservations),
-      idvoit:        form.voiture.idvoit,
-      idcli:         form.client.idcli,
-      place:         form.place,
-      dateReserv,
-      datevoyage:    form.datevoyage,
-      heure:         form.heure as '7h Matin' | '7h Soir',
-      payment:       form.payment as Reservation['payment'],
-      montantAvance: form.montantAvance,
+      if (enEdition) {
+        const payload: UpdateReservationData = {
+          place:         form.place,
+          dateVoyage:    form.dateVoyage,
+          payment:       mapPaiementToApi(form.payment as 'sans avance' | 'avec avance' | 'tout payé'),
+          montantAvance: form.montantAvance,
+        }
+        const updated = await apiReservations.update(enEdition, payload)
+        setReservations(rs => rs.map(r => r.idreserv === enEdition ? mapApiReservation(updated) : r))
+      } else {
+        const payload: CreateReservationData = {
+          idvoit:        form.voiture.idvoit,
+          idcli:         form.client.idcli,
+          place:         form.place,
+          dateVoyage:    form.dateVoyage,
+          payment:       mapPaiementToApi(form.payment as 'sans avance' | 'avec avance' | 'tout payé'),
+          montantAvance: form.montantAvance,
+        }
+        const created = await apiReservations.create(payload)
+        setReservations(rs => [...rs, mapApiReservation(created)])
+
+        // Rafraîchir les places de la voiture après réservation
+        const places = await apiPlaces.listByVoiture(form.voiture.idvoit)
+        const occ = places.filter(p => p.occupation).map(p => p.id.place)
+        setPlacesOccupeesApi(prev => ({ ...prev, [form.voiture!.idvoit]: occ }))
+
+        // Ouvrir le PDF reçu dans un nouvel onglet
+        window.open(apiReservations.recuPdfUrl(created.idreserv), '_blank')
+      }
+
+      setForm(FORM_VIDE)
+      setEnEdition(null)
+      setErreur('')
+      window.history.replaceState({}, '', '/reservation')
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement')
+    } finally {
+      setSaving(false)
     }
-
-    if (enEdition) {
-      setReservations(rs => rs.map(r => r.idreserv === enEdition ? nouvelleReserv : r))
-    } else {
-      setReservations(rs => [...rs, nouvelleReserv])
-    }
-
-    // Générer le PDF
-    genererRecu(
-      {
-        idreserv:      nouvelleReserv.idreserv,
-        idvoit:        nouvelleReserv.idvoit,
-        idcli:         nouvelleReserv.idcli,
-        place:         nouvelleReserv.place,
-        dateReserv:    nouvelleReserv.dateReserv,
-        datevoyage:    nouvelleReserv.datevoyage,
-        payment:       nouvelleReserv.payment,
-        montantAvance: nouvelleReserv.montantAvance,
-      },
-      { nom: form.client.nom, numtel: form.client.numtel },
-      { frais: form.voiture.frais, type: form.voiture.type },
-    )
-
-    // Reset
-    setForm(FORM_VIDE)
-    setEnEdition(null)
-    setErreur('')
-    // Nettoyer le paramètre ?edit= de l'URL
-    window.history.replaceState({}, '', '/reservation')
   }
 
   function handleAnnulerEdition() {
@@ -293,17 +315,22 @@ export default function PageReservation() {
   }
 
   function handleSupprimerReservation(idreserv: string) {
+    // Pas d'endpoint DELETE dans l'API → suppression locale uniquement
     setReservations(rs => rs.filter(r => r.idreserv !== idreserv))
   }
 
-  // Ajout client rapide
-  function handleAjoutClientRapide(client: Client) {
-    setClients(cs => [...cs, client])
-    setChamp('client', client)
-    setPopupClient(false)
+  async function handleAjoutClientRapide(client: Client) {
+    try {
+      const created = await apiClients.create({ nom: client.nom, numtel: client.numtel })
+      setClients(cs => [...cs, created])
+      setChamp('client', created)
+      setPopupClient(false)
+    } catch (err) {
+      console.error('Erreur ajout client rapide:', err)
+    }
   }
 
-  // Filtre liste + enrichissement pour ListeReservations (champs dénormalisés)
+  // ── Enrichissement pour ListeReservations ────────────────────────────────
   const reservationsFiltrees = useMemo(() => {
     return reservations
       .filter(r => {
@@ -313,28 +340,43 @@ export default function PageReservation() {
       })
       .map(r => {
         const client  = clients.find(c => c.idcli  === r.idcli)
-        const voiture = VOITURES_INIT.find(v => v.idvoit === r.idvoit)
+        const voiture = voitures.find(v => v.idvoit === r.idvoit)
         return {
           ...r,
-          dateVoyage:    r.datevoyage,   // ListeReservations attend dateVoyage (camelCase)
-          nomClient:     client?.nom,
-          numtel:        client?.numtel,
+          nomClient:     client?.nom     ?? '—',
+          numtel:        client?.numtel  ?? '—',
           fraisVoiture:  voiture?.frais,
           designVoiture: voiture?.design,
           typeVoiture:   voiture?.type,
         }
       })
-  }, [reservations, filtrePaiement, filtreClient, clients])
+  }, [reservations, filtrePaiement, filtreClient, clients, voitures])
 
   // ---------------------------------------------------------------------------
   // RENDU
   // ---------------------------------------------------------------------------
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ textAlign: 'center', padding: '40px' }}>Chargement...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '20px', borderRadius: '8px', margin: '20px' }}>
+          <strong>Erreur :</strong> {error}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.page}>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          HEADER
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── HEADER ── */}
       <div className={styles.header}>
         <div>
           <h1 className={styles.titre}>Réservations</h1>
@@ -344,9 +386,7 @@ export default function PageReservation() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          BLOC FORMULAIRE + GRILLE CÔTE À CÔTE
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── FORMULAIRE + GRILLE ── */}
       <div className={styles.blocs}>
 
         {/* ── FORMULAIRE ── */}
@@ -355,41 +395,22 @@ export default function PageReservation() {
             {enEdition ? `✏️ Modifier — ${enEdition}` : 'Nouvelle réservation'}
           </div>
 
-          {/* ── 1. DATE ── */}
+          {/* 1. DATE */}
           <div className={styles.champ}>
             <label className={styles.label}>Date du voyage</label>
             <input
               type="date"
               className={styles.input}
-              value={form.datevoyage}
-              // ✅ FIX : en mode édition, on retire le min pour permettre
-              //    les dates passées (la réservation existante peut être ancienne)
+              value={form.dateVoyage}
               min={enEdition ? undefined : new Date().toISOString().split('T')[0]}
               onChange={e => {
-                setForm(f => ({ ...f, datevoyage: e.target.value, voiture: null, place: null }))
+                setForm(f => ({ ...f, dateVoyage: e.target.value, voiture: null, place: null }))
                 setErreur('')
               }}
             />
           </div>
 
-          {/* ── 2. HEURE ── */}
-          <div className={styles.champ}>
-            <label className={styles.label}>Heure de départ</label>
-            <div className={styles.heureButtons}>
-              {(['7h Matin', '7h Soir'] as const).map(h => (
-                <button
-                  key={h}
-                  type="button"
-                  className={`${styles.heureBtn} ${form.heure === h ? styles.heureBtnActif : ''}`}
-                  onClick={() => setChamp('heure', h)}
-                >
-                  {h === '7h Matin' ? '🌅 7h Matin' : '🌆 7h Soir'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── 3. CLIENT ── */}
+          {/* 2. CLIENT */}
           <div className={styles.champ}>
             <label className={styles.label}>Client</label>
             <div className={styles.clientRow}>
@@ -414,7 +435,7 @@ export default function PageReservation() {
             </div>
           </div>
 
-          {/* ── 4. TYPE VOITURE ── */}
+          {/* 3. TYPE VOITURE */}
           <div className={styles.champ}>
             <label className={styles.label}>Type de voiture</label>
             <div className={styles.typeButtons}>
@@ -431,17 +452,17 @@ export default function PageReservation() {
             </div>
           </div>
 
-          {/* ── 5. VOITURE ── */}
+          {/* 4. VOITURE */}
           {form.typeVoiture && (
             <div className={styles.champ}>
               <label className={styles.label}>
                 Voiture
-                {!form.datevoyage && <span className={styles.labelHint}> — choisissez d'abord une date</span>}
+                {!form.dateVoyage && <span className={styles.labelHint}> — choisissez d'abord une date</span>}
               </label>
-              {form.datevoyage ? (
+              {form.dateVoyage ? (
                 voituresDispo.length === 0 ? (
                   <div className={styles.alerteBloc}>
-                    Aucune voiture disponible pour ce type et cette date (fenêtre J-2/J+2).
+                    Aucune voiture disponible pour ce type.
                   </div>
                 ) : (
                   <div className={styles.voituresList}>
@@ -465,7 +486,7 @@ export default function PageReservation() {
             </div>
           )}
 
-          {/* ── 6. PAIEMENT ── */}
+          {/* 5. PAIEMENT */}
           {form.voiture && form.place && (
             <div className={styles.champ}>
               <label className={styles.label}>
@@ -513,10 +534,10 @@ export default function PageReservation() {
             </div>
           )}
 
-          {/* ── ERREUR ── */}
+          {/* ERREUR */}
           {erreur && <div className={styles.erreur}>{erreur}</div>}
 
-          {/* ── ACTIONS ── */}
+          {/* ACTIONS */}
           <div className={styles.actionsForm}>
             {enEdition && (
               <button
@@ -531,8 +552,13 @@ export default function PageReservation() {
               type="button"
               className={styles.btnPrincipal}
               onClick={handleEnregistrer}
+              disabled={saving}
             >
-              {enEdition ? '💾 Enregistrer les modifications' : '✓ Enregistrer + Générer reçu PDF'}
+              {saving
+                ? 'Enregistrement...'
+                : enEdition
+                  ? '💾 Enregistrer les modifications'
+                  : '✓ Enregistrer + Générer reçu PDF'}
             </button>
           </div>
         </div>
@@ -556,18 +582,14 @@ export default function PageReservation() {
 
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          LISTE RÉSERVATIONS
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── LISTE RÉSERVATIONS ── */}
       <ListeReservations
         reservations={reservationsFiltrees}
         clients={clients}
         onSupprimer={handleSupprimerReservation}
       />
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          POPUP AJOUT CLIENT RAPIDE
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── POPUP AJOUT CLIENT RAPIDE ── */}
       {popupClient && (
         <FormClient
           client={null}

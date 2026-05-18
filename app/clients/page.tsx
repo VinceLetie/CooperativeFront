@@ -1,74 +1,68 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './clients.module.css'
 import FormClient from '../components/FormClient'
 import '../globals.css'
+import {
+  apiClients,
+  apiVoitures,
+  apiReservations,
+  Client as ApiClient,
+  Voiture as ApiVoiture,
+  Reservation as ApiReservation,
+  Paiement,
+  TypeVoiture,
+} from '@/app/services/api'
 
 // ---------------------------------------------------------------------------
-// DONNÉES MOCKÉES
+// TYPES LOCAUX
 // ---------------------------------------------------------------------------
-const VOITURES_INIT: Voiture[] = [
-  { idvoit: 'V01', design: 'Toyota Hiace',       type: 'simple'  },
-  { idvoit: 'V02', design: 'Mercedes Vito',       type: 'premium' },
-  { idvoit: 'V03', design: 'Toyota Land Cruiser', type: 'vip'     },
-]
+export interface Client extends ApiClient {}
 
-const CLIENTS_INIT: Client[] = [
-  { idcli: 1, nom: 'Rakoto Madison', numtel: '034 33 888 12' },
-  { idcli: 2, nom: 'Rabe Jean',      numtel: '033 12 345 67' },
-  { idcli: 3, nom: 'Rasoa Miora',    numtel: '032 55 111 22' },
-  { idcli: 4, nom: 'Andry Pierre',   numtel: '034 00 222 33' },
-]
+type LocalPaiement = 'sans avance' | 'avec avance' | 'tout payé'
+type FiltreAll     = LocalPaiement | 'tous'
 
-const RESERVATIONS_INIT: Reservation[] = [
-  { idreserv: 'R001', idvoit: 'V01', idcli: 1, place: 2, datevoyage: '2024-05-25', payment: 'avec avance',  montantAvance: 20000,  frais: 50000  },
-  { idreserv: 'R002', idvoit: 'V01', idcli: 2, place: 4, datevoyage: '2024-05-26', payment: 'tout payé',    montantAvance: 50000,  frais: 50000  },
-  { idreserv: 'R003', idvoit: 'V02', idcli: 3, place: 1, datevoyage: '2024-05-28', payment: 'sans avance',  montantAvance: 0,      frais: 80000  },
-  { idreserv: 'R004', idvoit: 'V01', idcli: 4, place: 6, datevoyage: '2024-05-25', payment: 'avec avance',  montantAvance: 15000,  frais: 50000  },
-  { idreserv: 'R005', idvoit: 'V03', idcli: 1, place: 2, datevoyage: '2024-06-01', payment: 'tout payé',    montantAvance: 120000, frais: 120000 },
-]
-
-// ---------------------------------------------------------------------------
-// TYPES
-// ---------------------------------------------------------------------------
-export interface Client {
-  idcli: number
-  nom: string
-  numtel: string
-}
-
-type TypeVoiture = 'simple' | 'premium' | 'vip'
-type Paiement    = 'sans avance' | 'avec avance' | 'tout payé'
-type FiltreAll   = Paiement | 'tous'
-
-interface Voiture {
-  idvoit: string
-  design: string
+interface Voiture extends ApiVoiture {
   type: TypeVoiture
 }
 
-interface Reservation {
-  idreserv: string
-  idvoit: string
-  idcli: number
-  place: number
-  datevoyage: string
-  payment: Paiement
-  montantAvance: number
-  frais: number
+interface Reservation extends ApiReservation {}
+
+// ---------------------------------------------------------------------------
+// CONVERSIONS API ↔ LOCAL
+// ---------------------------------------------------------------------------
+function mapApiPaiementToLocal(p: Paiement): LocalPaiement {
+  switch (p) {
+    case 'SANS_AVANCE': return 'sans avance'
+    case 'AVEC_AVANCE': return 'avec avance'
+    case 'TOUT_PAYE':   return 'tout payé'
+  }
+}
+
+function mapLocalPaiementToApi(p: LocalPaiement): Paiement {
+  switch (p) {
+    case 'sans avance': return 'SANS_AVANCE'
+    case 'avec avance': return 'AVEC_AVANCE'
+    case 'tout payé':   return 'TOUT_PAYE'
+  }
+}
+
+function mapApiTypeToLocal(t: TypeVoiture): 'simple' | 'premium' | 'vip' {
+  switch (t) {
+    case 'SIMPLE':  return 'simple'
+    case 'PREMIUM': return 'premium'
+    case 'VIP':     return 'vip'
+  }
 }
 
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
-function labelType(t: TypeVoiture): string {
+function labelType(t: 'simple' | 'premium' | 'vip'): string {
   return t === 'simple' ? 'Simple' : t === 'premium' ? 'Premium' : 'VIP'
 }
-
-const normaliser = (s: string) =>
-  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 function segmenter(texte: string, terme: string): { t: string; s: boolean }[] {
   if (!terme.trim()) return [{ t: texte, s: false }]
@@ -94,88 +88,183 @@ function Surligne({ texte, terme }: { texte: string; terme: string }) {
 export default function PageClients() {
   const router = useRouter()
 
-  const [clients, setClients] = useState<Client[]>(CLIENTS_INIT)
-  const [reservations]         = useState<Reservation[]>(RESERVATIONS_INIT)
+  const [clients, setClients]           = useState<Client[]>([])
+  const [allClients, setAllClients]     = useState<Client[]>([]) // liste complète non filtrée
+  const [voitures, setVoitures]         = useState<Voiture[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [rechercheLoading, setRechercheLoading] = useState(false)
+  const [error, setError]               = useState<string | null>(null)
 
-  // Recherche texte
-  const [recherche, setRecherche] = useState('')
-
-  // Filtre paiement
-  const [filtrePaiement, setFiltrePaiement] = useState<FiltreAll>('tous')
-
-  // Sélection rapide voiture (redirect)
+  const [recherche, setRecherche]                     = useState('')
+  const [filtrePaiement, setFiltrePaiement]           = useState<FiltreAll>('tous')
   const [voitureSelectionnee, setVoitureSelectionnee] = useState('')
+  const [popupOuvert, setPopupOuvert]                 = useState(false)
+  const [clientEnEdition, setClientEnEdition]         = useState<Client | null>(null)
+  const [idASupprimer, setIdASupprimer]               = useState<string | null>(null)
 
-  // Popup FormClient
-  const [popupOuvert, setPopupOuvert]         = useState(false)
-  const [clientEnEdition, setClientEnEdition] = useState<Client | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Confirmation suppression
-  const [idASupprimer, setIdASupprimer] = useState<number | null>(null)
+  // ── Chargement initial ────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [clientsData, voituresData, reservationsData] = await Promise.all([
+          apiClients.list(),
+          apiVoitures.list(),
+          apiReservations.list(),
+        ])
+        setClients(clientsData)
+        setAllClients(clientsData)
+        setVoitures(voituresData as Voiture[])
+        setReservations(reservationsData)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+        console.error('Erreur chargement données:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
 
-  // ── IDs clients filtrés par statut paiement ─────────────────────────────
+  // ── Recherche backend avec debounce 300ms ─────────────────────────────────
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!recherche.trim()) {
+      setClients(allClients)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setRechercheLoading(true)
+        const results = await apiClients.search(recherche.trim())
+        setClients(results)
+      } catch (err) {
+        console.error('Erreur recherche clients:', err)
+      } finally {
+        setRechercheLoading(false)
+      }
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [recherche, allClients])
+
+  // ── IDs clients filtrés par paiement ─────────────────────────────────────
   const idsFiltresPaiement = useMemo(() => {
     if (filtrePaiement === 'tous') return null
+    const apiPaiement = mapLocalPaiementToApi(filtrePaiement as LocalPaiement)
     return new Set(
       reservations
-        .filter(r => r.payment === filtrePaiement)
+        .filter(r => r.payment === apiPaiement)
         .map(r => r.idcli)
     )
   }, [reservations, filtrePaiement])
 
-  // ── Liste filtrée (recherche + paiement combinés) ────────────────────────
-  const termNorm = normaliser(recherche.trim())
-
+  // ── Liste filtrée (paiement seulement — recherche gérée par le backend) ──
   const clientsFiltres = useMemo(() => {
-    return clients.filter(c => {
-      const matchTexte = !termNorm
-        || normaliser(c.nom).includes(termNorm)
-        || c.numtel.replace(/\s/g, '').includes(termNorm.replace(/\s/g, ''))
-      const matchPaiement = idsFiltresPaiement === null || idsFiltresPaiement.has(c.idcli)
-      return matchTexte && matchPaiement
-    })
-  }, [clients, termNorm, idsFiltresPaiement])
+    if (idsFiltresPaiement === null) return clients
+    return clients.filter(c => idsFiltresPaiement.has(c.idcli))
+  }, [clients, idsFiltresPaiement])
 
-  // ── Comptage par statut (badge sur les boutons filtre) ───────────────────
+  // ── Comptages par statut paiement ─────────────────────────────────────────
   const comptages = useMemo(() => {
-    const c: Record<FiltreAll, number> = { 'tous': clients.length, 'sans avance': 0, 'avec avance': 0, 'tout payé': 0 }
-    // On compte les clients uniques par statut
-    const seen: Record<string, Set<number>> = { 'sans avance': new Set(), 'avec avance': new Set(), 'tout payé': new Set() }
-    reservations.forEach(r => { seen[r.payment]?.add(r.idcli) })
+    const c: Record<FiltreAll, number> = {
+      'tous': allClients.length,
+      'sans avance': 0,
+      'avec avance': 0,
+      'tout payé': 0,
+    }
+    const seen: Record<LocalPaiement, Set<string>> = {
+      'sans avance': new Set(),
+      'avec avance': new Set(),
+      'tout payé':   new Set(),
+    }
+    reservations.forEach(r => {
+      const local = mapApiPaiementToLocal(r.payment)
+      seen[local].add(r.idcli)
+    })
     c['sans avance'] = seen['sans avance'].size
     c['avec avance'] = seen['avec avance'].size
     c['tout payé']   = seen['tout payé'].size
     return c
-  }, [clients, reservations])
+  }, [allClients, reservations])
 
-  // ── Handlers FormClient ──────────────────────────────────────────────────
+  // ── Handlers FormClient ───────────────────────────────────────────────────
   function ouvrirAjout() { setClientEnEdition(null); setPopupOuvert(true) }
   function ouvrirModif(c: Client) { setClientEnEdition(c); setPopupOuvert(true) }
 
-  function handleEnregistrer(c: Client) {
-    setClients(prev =>
-      clientEnEdition
-        ? prev.map(x => x.idcli === c.idcli ? c : x)
-        : [...prev, c]
-    )
-    setPopupOuvert(false)
+  async function handleEnregistrer(c: Client) {
+    try {
+      if (clientEnEdition) {
+        const updated = await apiClients.update(c.idcli, {
+          nom: c.nom,
+          numtel: c.numtel,
+        })
+        setClients(prev => prev.map(x => x.idcli === c.idcli ? updated : x))
+        setAllClients(prev => prev.map(x => x.idcli === c.idcli ? updated : x))
+      } else {
+        const created = await apiClients.create({
+          nom: c.nom,
+          numtel: c.numtel,
+        })
+        setClients(prev => [...prev, created])
+        setAllClients(prev => [...prev, created])
+      }
+      setPopupOuvert(false)
+    } catch (err) {
+      console.error("Erreur lors de l'enregistrement du client:", err)
+      setError(err instanceof Error ? err.message : 'Erreur')
+    }
   }
 
-  // ── Suppression ──────────────────────────────────────────────────────────
+  // ── Suppression (local uniquement — pas d'endpoint DELETE dans l'API) ─────
   function confirmerSuppression() {
     if (idASupprimer === null) return
     setClients(prev => prev.filter(c => c.idcli !== idASupprimer))
+    setAllClients(prev => prev.filter(c => c.idcli !== idASupprimer))
     setIdASupprimer(null)
   }
 
-  // ── Redirect vers page voiture ───────────────────────────────────────────
+  // ── Navigation vers page voiture ──────────────────────────────────────────
   function allerVersVoiture(idvoit: string) {
     if (idvoit) router.push(`/voitures/${idvoit}`)
   }
 
   const filtreActif = recherche.trim() || filtrePaiement !== 'tous'
 
-  // ── Rendu ────────────────────────────────────────────────────────────────
+  // ── États loading / erreur ────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ textAlign: 'center', padding: '40px' }}>Chargement des clients...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <div style={{
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          padding: '20px',
+          borderRadius: '8px',
+          margin: '20px',
+        }}>
+          <strong>Erreur :</strong> {error}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Rendu ─────────────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
 
@@ -184,7 +273,7 @@ export default function PageClients() {
         <div>
           <h1 className={styles.titre}>Clients</h1>
           <p className={styles.sousTitre}>
-            {clients.length} client{clients.length > 1 ? 's' : ''} enregistré{clients.length > 1 ? 's' : ''}
+            {allClients.length} client{allClients.length > 1 ? 's' : ''} enregistré{allClients.length > 1 ? 's' : ''}
           </p>
         </div>
         <button className={styles.btnPrincipal} onClick={ouvrirAjout}>
@@ -197,7 +286,9 @@ export default function PageClients() {
 
         {/* Recherche */}
         <div className={styles.rechercheWrapper}>
-          <span className={styles.rechercheIcone} aria-hidden>🔍</span>
+          <span className={styles.rechercheIcone} aria-hidden>
+            {rechercheLoading ? '⏳' : '🔍'}
+          </span>
           <input
             className={styles.inputRecherche}
             type="text"
@@ -238,9 +329,9 @@ export default function PageClients() {
           }}
         >
           <option value="">🚐 Voir par voiture...</option>
-          {VOITURES_INIT.map(v => (
+          {voitures.map(v => (
             <option key={v.idvoit} value={v.idvoit}>
-              {v.idvoit} — {v.design} ({labelType(v.type)})
+              {v.idvoit} — {v.design} ({labelType(mapApiTypeToLocal(v.type))})
             </option>
           ))}
         </select>
@@ -254,7 +345,10 @@ export default function PageClients() {
           {' '}client{clientsFiltres.length !== 1 ? 's' : ''}
           {recherche.trim() && <> pour «&nbsp;<strong>{recherche.trim()}</strong>&nbsp;»</>}
           {filtrePaiement !== 'tous' && <> · {filtrePaiement}</>}
-          <button className={styles.btnReinitFiltres} onClick={() => { setRecherche(''); setFiltrePaiement('tous') }}>
+          <button
+            className={styles.btnReinitFiltres}
+            onClick={() => { setRecherche(''); setFiltrePaiement('tous') }}
+          >
             Réinitialiser
           </button>
         </p>
@@ -286,11 +380,15 @@ export default function PageClients() {
                     <button
                       className={`${styles.btnAction} ${styles.btnSecondaire}`}
                       onClick={() => ouvrirModif(c)}
-                    >Modifier</button>
+                    >
+                      Modifier
+                    </button>
                     <button
                       className={`${styles.btnAction} ${styles.btnDanger}`}
                       onClick={() => setIdASupprimer(c.idcli)}
-                    >Supprimer</button>
+                    >
+                      Supprimer
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -312,7 +410,7 @@ export default function PageClients() {
       {popupOuvert && (
         <FormClient
           client={clientEnEdition}
-          clientsExistants={clients}
+          clientsExistants={allClients}
           onEnregistrer={handleEnregistrer}
           onFermer={() => setPopupOuvert(false)}
         />
@@ -336,11 +434,15 @@ export default function PageClients() {
               <button
                 className={`${styles.btnAction} ${styles.btnSecondaire}`}
                 onClick={() => setIdASupprimer(null)}
-              >Annuler</button>
+              >
+                Annuler
+              </button>
               <button
                 className={`${styles.btnAction} ${styles.btnDanger}`}
                 onClick={confirmerSuppression}
-              >Supprimer</button>
+              >
+                Supprimer
+              </button>
             </div>
           </div>
         </div>

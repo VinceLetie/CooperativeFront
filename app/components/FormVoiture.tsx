@@ -8,8 +8,8 @@ import { Voiture, TypeVoiture } from '@/app/voitures/page'
 // PROPS
 // ---------------------------------------------------------------------------
 interface Props {
-  voiture: Voiture | null              // null = mode ajout, Voiture = mode modif
-  voituresExistantes: string[]         // liste des idvoit déjà pris (pour validation ajout)
+  voiture: Voiture | null
+  voituresExistantes: string[]
   onEnregistrer: (v: Voiture) => void
   onFermer: () => void
 }
@@ -20,23 +20,19 @@ interface Props {
 export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer, onFermer }: Props) {
   const modeModif = voiture !== null
 
-  const [formIdvoit,    setFormIdvoit]    = useState('')
-  const [formDesign,    setFormDesign]    = useState('')
-  const [formType,      setFormType]      = useState<TypeVoiture>('simple')
-  const [formNbrplace,  setFormNbrplace]  = useState<number>(15)
-  const [formFrais,     setFormFrais]     = useState<number>(0)
-  const [erreur,        setErreur]        = useState('')
+  const [formDesign,   setFormDesign]   = useState('')
+  const [formType,     setFormType]     = useState<TypeVoiture>('simple')
+  const [formNbrplace, setFormNbrplace] = useState<number>(15)
+  const [formFrais,    setFormFrais]    = useState<number>(0)
+  const [erreur,       setErreur]       = useState('')
 
-  // Pré-remplir si modification
   useEffect(() => {
     if (voiture) {
-      setFormIdvoit(voiture.idvoit)
       setFormDesign(voiture.design)
       setFormType(voiture.type)
       setFormNbrplace(voiture.nbrplace)
       setFormFrais(voiture.frais)
     } else {
-      setFormIdvoit('')
       setFormDesign('')
       setFormType('simple')
       setFormNbrplace(15)
@@ -50,23 +46,14 @@ export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer
       setErreur('La désignation est obligatoire.')
       return
     }
-    if (!modeModif) {
-      if (!formIdvoit.trim()) {
-        setErreur("L'identifiant est obligatoire.")
-        return
-      }
-      if (voituresExistantes.includes(formIdvoit.trim())) {
-        setErreur('Cet identifiant est déjà utilisé.')
-        return
-      }
-    }
     if (formNbrplace < 1) {
       setErreur('Le nombre de places doit être au moins 1.')
       return
     }
 
     const v: Voiture = {
-      idvoit:   modeModif ? voiture!.idvoit : formIdvoit.trim(),
+      // En mode création, idvoit est assigné par le backend
+      idvoit:   modeModif ? voiture!.idvoit : '',
       design:   formDesign.trim(),
       type:     formType,
       nbrplace: formNbrplace,
@@ -87,19 +74,19 @@ export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer
           <button className={styles.btnClose} onClick={onFermer}>✕</button>
         </div>
 
-        {/* Identifiant — désactivé en modification */}
-        <div className={styles.champ}>
-          <label className={styles.label}>Identifiant *</label>
-          <input
-            className={styles.input}
-            type="text"
-            value={formIdvoit}
-            onChange={e => setFormIdvoit(e.target.value)}
-            placeholder="Ex : V04"
-            disabled={modeModif}
-            style={modeModif ? { background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' } : {}}
-          />
-        </div>
+        {/* Identifiant — affiché en lecture seule uniquement en modification */}
+        {modeModif && (
+          <div className={styles.champ}>
+            <label className={styles.label}>Identifiant</label>
+            <input
+              className={styles.input}
+              type="text"
+              value={voiture!.idvoit}
+              disabled
+              style={{ background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' }}
+            />
+          </div>
+        )}
 
         {/* Désignation */}
         <div className={styles.champ}>
