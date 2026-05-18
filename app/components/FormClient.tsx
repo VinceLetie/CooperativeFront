@@ -44,6 +44,11 @@ export default function FormClient({ client, clientsExistants, onEnregistrer, on
       setErreur('Le numéro de téléphone est obligatoire.')
       return
     }
+    const chiffres = formNumtel.replace(/\s/g, '')
+    if (chiffres.length !== 10 || !/^\d+$/.test(chiffres)) {
+      setErreur('Le numéro de téléphone doit contenir exactement 10 chiffres.')
+      return
+    }
 
     const c: Client = {
       // En mode création, idcli est assigné par le backend — on passe une string vide
