@@ -73,6 +73,7 @@ export default function PageVoitures() {
   const [popupOuvert, setPopupOuvert]           = useState(false)
   const [voitureEnEdition, setVoitureEnEdition] = useState<Voiture | null>(null)
   const [idASupprimer, setIdASupprimer]         = useState<string | null>(null)
+  const [formError, setFormError]               = useState<string | null>(null)
 
   // ── Chargement initial ────────────────────────────────────────────────────
   useEffect(() => {
@@ -129,8 +130,8 @@ export default function PageVoitures() {
   }
 
   // ── FormVoiture ───────────────────────────────────────────────────────────
-  function ouvrirAjout() { setVoitureEnEdition(null); setPopupOuvert(true) }
-  function ouvrirModif(v: Voiture) { setVoitureEnEdition(v); setPopupOuvert(true) }
+  function ouvrirAjout() { setVoitureEnEdition(null); setFormError(null); setPopupOuvert(true) }
+  function ouvrirModif(v: Voiture) { setVoitureEnEdition(v); setFormError(null); setPopupOuvert(true) }
 
   async function handleEnregistrer(v: Voiture) {
     try {
@@ -159,7 +160,7 @@ export default function PageVoitures() {
       }
       setPopupOuvert(false)
     } catch (err) {
-      console.error('Erreur enregistrement voiture:', err)
+      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement")
     }
   }
 
@@ -341,7 +342,8 @@ export default function PageVoitures() {
           voiture={voitureEnEdition}
           voituresExistantes={voitures.map(v => v.idvoit)}
           onEnregistrer={handleEnregistrer}
-          onFermer={() => setPopupOuvert(false)}
+          onFermer={() => { setPopupOuvert(false); setFormError(null) }}
+          erreurExterne={formError}
         />
       )}
 

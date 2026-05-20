@@ -12,12 +12,13 @@ interface Props {
   voituresExistantes: string[]
   onEnregistrer: (v: Voiture) => void
   onFermer: () => void
+  erreurExterne?: string | null
 }
 
 // ---------------------------------------------------------------------------
 // COMPONENT
 // ---------------------------------------------------------------------------
-export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer, onFermer }: Props) {
+export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer, onFermer, erreurExterne }: Props) {
   const modeModif = voiture !== null
 
   const [formDesign,   setFormDesign]   = useState('')
@@ -135,13 +136,14 @@ export default function FormVoiture({ voiture, voituresExistantes, onEnregistrer
             min={0}
             value={formFrais}
             onChange={e => setFormFrais(Number(e.target.value))}
+            style={{ appearance: 'none', MozAppearance: 'textfield' } as React.CSSProperties}
           />
         </div>
 
         {/* Erreur */}
-        {erreur && (
+        {(erreur || erreurExterne) && (
           <p style={{ fontSize: 13, color: '#ef4444', margin: '-8px 0 12px 0' }}>
-            {erreur}
+            {erreur || erreurExterne}
           </p>
         )}
 
