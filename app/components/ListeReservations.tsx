@@ -88,11 +88,8 @@ export default function ListeReservations({
   })
 
   function handleModifier(idreserv: string) {
-    const url = new URL(window.location.href)
-    url.searchParams.set('edit', idreserv)
-    window.history.pushState({}, '', url.toString())
-    window.dispatchEvent(new PopStateEvent('popstate'))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // Navigation réelle vers /reservations?edit=ID
+    window.location.href = `/reservations?edit=${idreserv}`
   }
 
   return (
@@ -158,7 +155,7 @@ export default function ListeReservations({
               </tr>
             </thead>
             <tbody>
-              {liste.map(r => {
+              {liste.reverse().map(r => {
                 const badge = badgePayment(r.payment)
                 const reste = r.fraisVoiture
                   ? (r.payment === 'tout payé' ? 0 : r.fraisVoiture - r.montantAvance)
@@ -189,7 +186,7 @@ export default function ListeReservations({
                     </td>
 
                     <td className="lr-cell-date">{formatDatetime(r.dateReserv)}</td>
-                    <td className="lr-cell-date">{formatDate(r.dateVoyage)}</td>
+                    <td className="lr-cell-date">{formatDatetime(r.dateVoyage)}</td>
 
                     <td>
                       <span
@@ -230,14 +227,7 @@ export default function ListeReservations({
                             Reçu
                           </button>
                         )}
-                        {onSupprimer && (
-                          <button
-                            className="lr-btn lr-btn-danger"
-                            onClick={() => onSupprimer(r.idreserv)}
-                          >
-                            Supprimer
-                          </button>
-                        )}
+                        
                       </div>
                     </td>
                   </tr>

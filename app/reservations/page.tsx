@@ -31,10 +31,10 @@ import {
 export interface Reservation {
   idreserv: string
   idvoit: string
-  idcli: string        // string (API retourne "C001")
+  idcli: string
   place: number
   dateReserv: string
-  dateVoyage: string
+  dateVoyage: string   // format "AAAA-MM-JJ HH:MM:SS" (07:00:00 = matin, 19:00:00 = soir)
   payment: 'sans avance' | 'avec avance' | 'tout payé'
   montantAvance: number
 }
@@ -55,14 +55,6 @@ function mapPaiementToApi(p: 'sans avance' | 'avec avance' | 'tout payé'): Paie
     case 'sans avance': return 'SANS_AVANCE'
     case 'avec avance': return 'AVEC_AVANCE'
     case 'tout payé':   return 'TOUT_PAYE'
-  }
-}
-
-function mapTypeToApi(t: TypeVoiture): ApiTypeVoiture {
-  switch (t) {
-    case 'simple':  return 'SIMPLE'
-    case 'premium': return 'PREMIUM'
-    case 'vip':     return 'VIP'
   }
 }
 
@@ -87,16 +79,27 @@ function mapApiReservation(r: ApiReservation): Reservation {
   }
 }
 
+/** Construit le dateVoyage complet à envoyer au back : "AAAA-MM-JJ HH:MM:SS" */
+function buildDateVoyage(date: string, heure: '7h Matin' | '7h Soir'): string {
+  const time = heure === '7h Matin' ? '07:00:00' : '19:00:00'
+  return `${date} ${time}`
+}
+
+/** Extrait la date seule depuis un dateVoyage complet */
+function extractDate(dateVoyage: string): string {
+  return dateVoyage ? dateVoyage.split(' ')[0] : ''
+}
+
+/** Extrait l'heure depuis un dateVoyage complet */
+function extractHeure(dateVoyage: string): '7h Matin' | '7h Soir' | '' {
+  if (!dateVoyage) return ''
+  const time = dateVoyage.split(' ')[1] ?? ''
+  return time.startsWith('07') ? '7h Matin' : time.startsWith('19') ? '7h Soir' : ''
+}
+
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
-function formatDateAffichage(dateStr: string): string {
-  if (!dateStr) return ''
-  const [y, m, d] = dateStr.split('-')
-  const mois = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
-  return `${parseInt(d)} ${mois[parseInt(m) - 1]} ${y}`
-}
-
 function placesOccupeesVoiture(
   idvoit: string,
   dateVoyage: string,
@@ -112,7 +115,8 @@ function placesOccupeesVoiture(
 // ÉTAT FORMULAIRE
 // ---------------------------------------------------------------------------
 interface FormState {
-  dateVoyage: string
+  date: string                        // "AAAA-MM-JJ" — pour l'input type="date"
+  heure: '7h Matin' | '7h Soir' | '' // choix local, fusionné en dateVoyage à l'envoi
   client: Client | null
   typeVoiture: TypeVoiture | ''
   voiture: Voiture | null
@@ -122,7 +126,7 @@ interface FormState {
 }
 
 const FORM_VIDE: FormState = {
-  dateVoyage: '', client: null,
+  date: '', heure: '', client: null,
   typeVoiture: '', voiture: null, place: null,
   payment: '', montantAvance: 0,
 }
@@ -139,15 +143,14 @@ export default function PageReservation() {
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
 
-  // Places occupées par voiture (depuis l'API /places)
   const [placesOccupeesApi, setPlacesOccupeesApi] = useState<Record<string, number[]>>({})
 
-  const [form,         setForm]         = useState<FormState>(FORM_VIDE)
-  const [enEdition,    setEnEdition]    = useState<string | null>(null)
-  const [erreur,       setErreur]       = useState<string>('')
-  const [saving,       setSaving]       = useState(false)
+  const [form,      setForm]      = useState<FormState>(FORM_VIDE)
+  const [enEdition, setEnEdition] = useState<string | null>(null)
+  const [erreur,    setErreur]    = useState<string>('')
+  const [saving,    setSaving]    = useState(false)
 
-  const [popupClient,  setPopupClient]  = useState(false)
+  const [popupClient, setPopupClient] = useState(false)
 
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
@@ -198,7 +201,8 @@ export default function PageReservation() {
 
     setEnEdition(editId)
     setForm({
-      dateVoyage:    r.dateVoyage,
+      date:          extractDate(r.dateVoyage),
+      heure:         extractHeure(r.dateVoyage),
       client,
       typeVoiture:   voiture?.type ?? '',
       voiture,
@@ -211,17 +215,16 @@ export default function PageReservation() {
 
   // ── Voitures disponibles selon type + date ────────────────────────────────
   const voituresDispo = useMemo<Voiture[]>(() => {
-    if (!form.dateVoyage || !form.typeVoiture) return []
+    if (!form.date || !form.typeVoiture) return []
     return voitures.filter(v => v.type === form.typeVoiture)
-  }, [form.dateVoyage, form.typeVoiture, voitures])
+  }, [form.date, form.typeVoiture, voitures])
 
   // ── Places occupées pour la grille ───────────────────────────────────────
   const occupees = useMemo<number[]>(() => {
     if (!form.voiture) return []
-    // Priorité : données fraîches de l'API places
     return placesOccupeesApi[form.voiture.idvoit]
-      ?? placesOccupeesVoiture(form.voiture.idvoit, form.dateVoyage, reservations, enEdition ?? undefined)
-  }, [form.voiture, form.dateVoyage, reservations, enEdition, placesOccupeesApi])
+      ?? placesOccupeesVoiture(form.voiture.idvoit, form.date, reservations, enEdition ?? undefined)
+  }, [form.voiture, form.date, reservations, enEdition, placesOccupeesApi])
 
   const frais = form.voiture?.frais ?? 0
   const reste = frais - form.montantAvance
@@ -254,7 +257,17 @@ export default function PageReservation() {
   // ENREGISTRER → API
   // ---------------------------------------------------------------------------
   async function handleEnregistrer() {
-    if (!form.dateVoyage)  return setErreur('Choisissez une date de voyage.')
+    if (!form.date) return setErreur('Choisissez une date de voyage.')
+
+    // La date doit être aujourd'hui ou dans le futur
+    const aujourdhui = new Date()
+    aujourdhui.setHours(0, 0, 0, 0)
+    const dateVoyage = new Date(form.date)
+    dateVoyage.setHours(0, 0, 0, 0)
+    if (dateVoyage < aujourdhui)
+      return setErreur('La date de voyage doit être aujourd\'hui ou dans le futur.')
+
+    if (!form.heure)       return setErreur('Choisissez une heure (7h Matin ou 7h Soir).')
     if (!form.client)      return setErreur('Sélectionnez un client.')
     if (!form.typeVoiture) return setErreur('Choisissez un type de voiture.')
     if (!form.voiture)     return setErreur('Choisissez une voiture.')
@@ -262,6 +275,11 @@ export default function PageReservation() {
     if (!form.payment)     return setErreur('Choisissez un mode de paiement.')
     if (form.payment === 'avec avance' && form.montantAvance <= 0)
       return setErreur("Entrez le montant de l'avance.")
+    if (form.payment === 'avec avance' && form.montantAvance >= frais)
+      return setErreur(`Le montant de l'avance doit être inférieur au total (${frais.toLocaleString('fr-FR')} Ar). Utilisez "Tout payé" si vous payez tout.`)
+
+    // Fusion date + heure → "AAAA-MM-JJ HH:MM:SS"
+    const dateVoyageComplet = buildDateVoyage(form.date, form.heure as '7h Matin' | '7h Soir')
 
     try {
       setSaving(true)
@@ -269,7 +287,7 @@ export default function PageReservation() {
       if (enEdition) {
         const payload: UpdateReservationData = {
           place:         form.place,
-          dateVoyage:    form.dateVoyage,
+          dateVoyage:    dateVoyageComplet,
           payment:       mapPaiementToApi(form.payment as 'sans avance' | 'avec avance' | 'tout payé'),
           montantAvance: form.montantAvance,
         }
@@ -280,19 +298,17 @@ export default function PageReservation() {
           idvoit:        form.voiture.idvoit,
           idcli:         form.client.idcli,
           place:         form.place,
-          dateVoyage:    form.dateVoyage,
+          dateVoyage:    dateVoyageComplet,
           payment:       mapPaiementToApi(form.payment as 'sans avance' | 'avec avance' | 'tout payé'),
           montantAvance: form.montantAvance,
         }
         const created = await apiReservations.create(payload)
         setReservations(rs => [...rs, mapApiReservation(created)])
 
-        // Rafraîchir les places de la voiture après réservation
         const places = await apiPlaces.listByVoiture(form.voiture.idvoit)
         const occ = places.filter(p => p.occupation).map(p => p.id.place)
         setPlacesOccupeesApi(prev => ({ ...prev, [form.voiture!.idvoit]: occ }))
 
-        // Ouvrir le PDF reçu dans un nouvel onglet
         window.open(apiReservations.recuPdfUrl(created.idreserv), '_blank')
       }
 
@@ -388,7 +404,6 @@ export default function PageReservation() {
       {/* ── FORMULAIRE + GRILLE ── */}
       <div className={styles.blocs}>
 
-        {/* ── FORMULAIRE ── */}
         <div className={styles.formulaire}>
           <div className={styles.formulaireTitre}>
             {enEdition ? `✏️ Modifier — ${enEdition}` : 'Nouvelle réservation'}
@@ -400,16 +415,33 @@ export default function PageReservation() {
             <input
               type="date"
               className={styles.input}
-              value={form.dateVoyage}
+              value={form.date}
               min={enEdition ? undefined : new Date().toISOString().split('T')[0]}
               onChange={e => {
-                setForm(f => ({ ...f, dateVoyage: e.target.value, voiture: null, place: null }))
+                setForm(f => ({ ...f, date: e.target.value, voiture: null, place: null }))
                 setErreur('')
               }}
             />
           </div>
 
-          {/* 2. CLIENT */}
+          {/* 2. HEURE */}
+          <div className={styles.champ}>
+            <label className={styles.label}>Heure de départ</label>
+            <div className={styles.heureButtons}>
+              {(['7h Matin', '7h Soir'] as const).map(h => (
+                <button
+                  key={h}
+                  type="button"
+                  className={`${styles.heureBtn} ${form.heure === h ? styles.heureBtnActif : ''}`}
+                  onClick={() => setChamp('heure', h)}
+                >
+                  {h === '7h Matin' ? '🌅 7h Matin' : '🌆 7h Soir'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. CLIENT */}
           <div className={styles.champ}>
             <label className={styles.label}>Client</label>
             <div className={styles.clientRow}>
@@ -434,7 +466,7 @@ export default function PageReservation() {
             </div>
           </div>
 
-          {/* 3. TYPE VOITURE */}
+          {/* 4. TYPE VOITURE */}
           <div className={styles.champ}>
             <label className={styles.label}>Type de voiture</label>
             <div className={styles.typeButtons}>
@@ -451,18 +483,16 @@ export default function PageReservation() {
             </div>
           </div>
 
-          {/* 4. VOITURE */}
+          {/* 5. VOITURE */}
           {form.typeVoiture && (
             <div className={styles.champ}>
               <label className={styles.label}>
                 Voiture
-                {!form.dateVoyage && <span className={styles.labelHint}> — choisissez d'abord une date</span>}
+                {!form.date && <span className={styles.labelHint}> — choisissez d'abord une date</span>}
               </label>
-              {form.dateVoyage ? (
+              {form.date ? (
                 voituresDispo.length === 0 ? (
-                  <div className={styles.alerteBloc}>
-                    Aucune voiture disponible pour ce type.
-                  </div>
+                  <div className={styles.alerteBloc}>Aucune voiture disponible pour ce type.</div>
                 ) : (
                   <div className={styles.voituresList}>
                     {voituresDispo.map(v => (
@@ -485,7 +515,7 @@ export default function PageReservation() {
             </div>
           )}
 
-          {/* 5. PAIEMENT */}
+          {/* 6. PAIEMENT */}
           {form.voiture && form.place && (
             <div className={styles.champ}>
               <label className={styles.label}>
@@ -512,11 +542,11 @@ export default function PageReservation() {
                     <input
                       type="number"
                       className={styles.input}
-                      min={0}
-                      max={frais}
+                      min={1}
+                      max={frais - 1}
                       value={form.montantAvance || ''}
                       onChange={e => setChamp('montantAvance', Number(e.target.value))}
-                      placeholder="0"
+                      placeholder={`Entre 1 et ${(frais - 1).toLocaleString('fr-FR')} Ar`}
                     />
                   </div>
                   <div className={styles.resteInfo}>
