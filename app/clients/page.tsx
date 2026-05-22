@@ -101,7 +101,6 @@ export default function PageClients() {
   const [voitureSelectionnee, setVoitureSelectionnee] = useState('')
   const [popupOuvert, setPopupOuvert]                 = useState(false)
   const [clientEnEdition, setClientEnEdition]         = useState<Client | null>(null)
-  const [idASupprimer, setIdASupprimer]               = useState<string | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -224,13 +223,6 @@ export default function PageClients() {
     }
   }
 
-  // ── Suppression (local uniquement — pas d'endpoint DELETE dans l'API) ─────
-  function confirmerSuppression() {
-    if (idASupprimer === null) return
-    setClients(prev => prev.filter(c => c.idcli !== idASupprimer))
-    setAllClients(prev => prev.filter(c => c.idcli !== idASupprimer))
-    setIdASupprimer(null)
-  }
 
   // ── Navigation vers page voiture ──────────────────────────────────────────
   function allerVersVoiture(idvoit: string) {
@@ -383,12 +375,7 @@ export default function PageClients() {
                     >
                       Modifier
                     </button>
-                    <button
-                      className={`${styles.btnAction} ${styles.btnDanger}`}
-                      onClick={() => setIdASupprimer(c.idcli)}
-                    >
-                      Supprimer
-                    </button>
+
                   </div>
                 </td>
               </tr>
@@ -416,37 +403,7 @@ export default function PageClients() {
         />
       )}
 
-      {/* ── CONFIRMATION SUPPRESSION ── */}
-      {idASupprimer !== null && (
-        <div className={styles.overlay} onClick={() => setIdASupprimer(null)}>
-          <div className={styles.popup} onClick={e => e.stopPropagation()}>
-            <div className={styles.popupHeader}>
-              <span className={styles.popupTitre}>Confirmer la suppression</span>
-              <button className={styles.btnClose} onClick={() => setIdASupprimer(null)}>✕</button>
-            </div>
-            <p style={{ fontSize: 14, color: '#475569', margin: '0 0 8px 0' }}>
-              Voulez-vous vraiment supprimer ce client ?
-            </p>
-            <p style={{ fontSize: 13, color: '#ef4444', margin: '0 0 24px 0' }}>
-              ⚠️ Cette action est irréversible.
-            </p>
-            <div className={styles.actionsPopup}>
-              <button
-                className={`${styles.btnAction} ${styles.btnSecondaire}`}
-                onClick={() => setIdASupprimer(null)}
-              >
-                Annuler
-              </button>
-              <button
-                className={`${styles.btnAction} ${styles.btnDanger}`}
-                onClick={confirmerSuppression}
-              >
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   )

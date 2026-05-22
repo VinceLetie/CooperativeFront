@@ -314,9 +314,8 @@ export default function PageReservation() {
     window.history.replaceState({}, '', '/reservation')
   }
 
-  function handleSupprimerReservation(idreserv: string) {
-    // Pas d'endpoint DELETE dans l'API → suppression locale uniquement
-    setReservations(rs => rs.filter(r => r.idreserv !== idreserv))
+  function handleGenererPdf(idreserv: string) {
+    window.open(apiReservations.recuPdfUrl(idreserv), '_blank')
   }
 
   async function handleAjoutClientRapide(client: Client) {
@@ -586,7 +585,7 @@ export default function PageReservation() {
       <ListeReservations
         reservations={reservationsFiltrees}
         clients={clients}
-        onSupprimer={handleSupprimerReservation}
+        onGenererPdf={handleGenererPdf}
       />
 
       {/* ── POPUP AJOUT CLIENT RAPIDE ── */}

@@ -28,6 +28,7 @@ interface Props {
   clients?: Client[]
   masquerColonneVoiture?: boolean
   onSupprimer?: (idreserv: string) => void
+  onGenererPdf?: (idreserv: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ export default function ListeReservations({
   clients,
   masquerColonneVoiture = false,
   onSupprimer,
+  onGenererPdf,
 }: Props) {
   const [filtrePaiement, setFiltrePaiement] = useState<'sans avance' | 'avec avance' | 'tout payé' | null>(null)
   const [filtreClient,   setFiltreClient]   = useState<Client | null>(null)
@@ -220,6 +222,14 @@ export default function ListeReservations({
                         >
                           Modifier
                         </button>
+                        {onGenererPdf && (
+                          <button
+                            className="lr-btn lr-btn-secondaire"
+                            onClick={() => onGenererPdf(r.idreserv)}
+                          >
+                            Reçu
+                          </button>
+                        )}
                         {onSupprimer && (
                           <button
                             className="lr-btn lr-btn-danger"
